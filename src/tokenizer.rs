@@ -25,10 +25,10 @@ impl Tokenizer {
             // Rip off the tabs/spaces before the juicy instructions.
             let line = line.trim_start();
             // Split up the line with the space delimiter.
-            let line_split = line.split(" ");
+            let line_split = line.split(' ');
             let mut peek_split = line_split.clone().peekable();
             while let Some(token) = peek_split.next() {
-                if token.contains(";") {
+                if token.contains(';') {
                     break;
                 }
                 if token.is_empty() {
@@ -144,7 +144,7 @@ impl Tokenizer {
         file.write_all(b"v2.0 raw\n").unwrap();
         for key in self.instructions.keys().sorted() {
             let mut hex_string = Tokenizer::decimal_to_hex_string(self.instructions[key]);
-            hex_string.push_str("\n");
+            hex_string.push('\n');
             file.write_all(hex_string.as_bytes()).unwrap();
         }
     }

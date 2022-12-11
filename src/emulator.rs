@@ -195,11 +195,7 @@ impl Emulator {
 
     // Determines if the program should exit by checking the register S.
     pub fn halted(&self) -> bool {
-        if self.read_register(Register::s) == 1 {
-            true
-        } else {
-            false
-        }
+        self.read_register(Register::s) == 1
     }
 
     // Matches the current value inside IR to its respective function or panics.

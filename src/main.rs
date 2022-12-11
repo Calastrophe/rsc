@@ -46,7 +46,7 @@ fn run(input: String) {
     let mut tokenizer_obj = tokenizer::Tokenizer::new();
     tokenizer_obj.parse(input.as_str());
     let mut main_emu = Emulator::new(tokenizer_obj.instructions);
-    while main_emu.halted() != true {
+    while !main_emu.halted() {
         main_emu.fetch();
         main_emu.execute();
     }
