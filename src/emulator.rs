@@ -1,6 +1,7 @@
 use std::collections::HashMap;
+use self::Register::*;
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 pub enum Register {
     acc,
     r,
@@ -12,6 +13,26 @@ pub enum Register {
     z,
     s,
 }
+
+// https://stackoverflow.com/questions/21371534/in-rust-is-there-a-way-to-iterate-through-the-values-of-an-enum
+impl Register {
+   pub fn iterator() -> impl Iterator<Item = Register> {
+        [acc, r, ir, pc, dr, ar, outr, z, s].iter().copied()
+   }
+   pub fn as_str(&self) -> &str {
+        match self {
+            acc => "ACC",
+            r => "R",
+            ir => "IR",
+            pc => "PC",
+            dr => "DR",
+            ar => "AR",
+            outr => "OUTR",
+            z => "Z",
+            s => "S"
+        }
+    }
+} 
 
 #[derive(Debug)]
 pub enum Instruction {
@@ -33,28 +54,6 @@ pub enum Instruction {
     NOT,
 }
 
-// impl Instruction {
-//     fn as_str(&self) -> &'static str {
-//         match self {
-//             Instruction::HALT => "HALT",
-//             Instruction::LDAC => "LDAC",
-//             Instruction::STAC => "STAC",
-//             Instruction::MVAC => "MVAC",
-//             Instruction::MOVR => "MOVR",
-//             Instruction::JMP => "JMP",
-//             Instruction::JMPZ => "JMPZ",
-//             Instruction::OUT => "OUT",
-//             Instruction::SUB => "SUB",
-//             Instruction::ADD => "ADD",
-//             Instruction::INC => "INC",
-//             Instruction::CLAC => "CLAC",
-//             Instruction::AND => "AND",
-//             Instruction::OR => "OR",
-//             Instruction::ASHR => "ASHR",
-//             Instruction::NOT => "NOT",
-//         }
-//     }
-// }
 
 impl<'a> From<&'a str> for Instruction {
     fn from(other: &'a str) -> Self {
@@ -171,40 +170,40 @@ impl Emulator {
 
     // Increments the PC register by 1.
     pub fn increment_pc(&mut self) {
-        let value = self.read_register(Register::pc) + 1;
-        self.write_register(Register::pc, value)
+        let value = self.read_register(pc) + 1;
+        self.write_register(pc, value)
     }
 
     // The typical fetch cycle, includes the check for Z.
     pub fn fetch(&mut self) {
         self.check_z();
-        self.transfer_value(Register::ar, Register::pc);
-        self.set_from_memory(Register::dr, Register::ar);
+        self.transfer_value(ar, pc);
+        self.set_from_memory(dr, ar);
         self.increment_pc();
-        self.transfer_value(Register::ir, Register::dr);
-        self.transfer_value(Register::ar, Register::pc);
+        self.transfer_value(ir, dr);
+        self.transfer_value(ar, pc);
     }
 
     fn check_z(&mut self) {
-        if self.read_register(Register::acc) == 0 {
-            self.write_register(Register::z, 1)
+        if self.read_register(acc) == 0 {
+            self.write_register(z, 1)
         } else {
-            self.write_register(Register::z, 0)
+            self.write_register(z, 0)
         }
     }
 
     // Determines if the program should exit by checking the register S.
     pub fn halted(&self) -> bool {
-        self.read_register(Register::s) == 1
+        self.read_register(s) == 1
     }
 
     // Matches the current value inside IR to its respective function or panics.
     pub fn execute(&mut self) {
         println!(
             "The instruction {:?} was executed.",
-            Instruction::from(self.read_register(Register::ir))
+            Instruction::from(self.read_register(ir))
         );
-        match self.read_register(Register::ir) {
+        match self.read_register(ir) {
             0 => self.halt(),
             1 => self.ldac(),
             2 => self.stac(),
@@ -225,91 +224,85 @@ impl Emulator {
         }
     }
 
-    // TODO: Refactor
+
     pub fn display_contents(&self) {
-        println!("S:    {:x}", self.registers[Register::s as usize]);
-        println!("Z:    {:x}", self.registers[Register::z as usize]);
-        println!("IR:   {:x}", self.registers[Register::ir as usize]);
-        println!("AR:   {:x}", self.registers[Register::ar as usize]);
-        println!("DR:   {:x}", self.registers[Register::dr as usize]);
-        println!("PC:   {:x}", self.registers[Register::pc as usize]);
-        println!("OUTR: {:x}", self.registers[Register::outr as usize]);
-        println!("ACC:  {:x}", self.registers[Register::acc as usize]);
-        println!("R:    {:x}", self.registers[Register::r as usize]);
+        for reg in Register::iterator() {
+            println!("{}: 0x{:X}", reg.as_str(), self.registers[reg as usize]);
+        }
     }
 }
 
 impl StandardInstructionDef for Emulator {
     fn add(&mut self) {
-        let value = self.read_register(Register::acc) + self.read_register(Register::r);
-        self.write_register(Register::acc, value)
+        let value = self.read_register(acc) + self.read_register(r);
+        self.write_register(acc, value)
     }
     fn sub(&mut self) {
-        let value = self.read_register(Register::acc) - self.read_register(Register::r);
-        self.write_register(Register::acc, value)
+        let value = self.read_register(acc) - self.read_register(r);
+        self.write_register(acc, value)
     }
     fn and(&mut self) {
-        let value = self.read_register(Register::acc) & self.read_register(Register::r);
-        self.write_register(Register::acc, value)
+        let value = self.read_register(acc) & self.read_register(r);
+        self.write_register(acc, value)
     }
     fn or(&mut self) {
-        let value = self.read_register(Register::acc) | self.read_register(Register::r);
-        self.write_register(Register::acc, value)
+        let value = self.read_register(acc) | self.read_register(r);
+        self.write_register(acc, value)
     }
     fn not(&mut self) {
-        let value = !self.read_register(Register::acc);
-        self.write_register(Register::acc, value)
+        let value = !self.read_register(acc);
+        self.write_register(acc, value)
     }
     fn ashr(&mut self) {
-        let value = self.read_register(Register::acc) >> 1;
-        self.write_register(Register::acc, value)
+        let value = self.read_register(acc) >> 1;
+        self.write_register(acc, value)
     }
     fn clac(&mut self) {
-        self.write_register(Register::acc, 0)
+        self.write_register(acc, 0)
     }
     fn inc(&mut self) {
-        let value = self.read_register(Register::acc) + 1;
-        self.write_register(Register::acc, value)
+        let value = self.read_register(acc) + 1;
+        self.write_register(acc, value)
     }
     fn out(&mut self) {
-        self.transfer_value(Register::outr, Register::acc)
+        self.transfer_value(outr, acc)
     }
     fn mvac(&mut self) {
-        self.transfer_value(Register::r, Register::acc)
+        self.transfer_value(r, acc)
     }
     fn movr(&mut self) {
-        self.transfer_value(Register::acc, Register::r)
+        self.transfer_value(acc, r)
     }
     fn jmp(&mut self) {
-        self.set_from_memory(Register::dr, Register::ar);
-        self.transfer_value(Register::pc, Register::dr)
+        self.set_from_memory(dr, ar);
+        self.transfer_value(pc, dr)
     }
     fn jmpz(&mut self) {
-        if self.read_register(Register::z) == 1 {
-            self.set_from_memory(Register::dr, Register::ar);
-            self.transfer_value(Register::pc, Register::dr)
+        if self.read_register(z) == 1 {
+            self.set_from_memory(dr, ar);
+            self.transfer_value(pc, dr)
         } else {
             self.increment_pc()
         }
     }
     fn ldac(&mut self) {
-        self.set_from_memory(Register::dr, Register::ar);
+        self.set_from_memory(dr, ar);
         self.increment_pc();
-        self.transfer_value(Register::ar, Register::dr);
-        self.set_from_memory(Register::dr, Register::ar);
-        self.transfer_value(Register::acc, Register::dr)
+        self.transfer_value(ar, dr);
+        self.set_from_memory(dr, ar);
+        self.transfer_value(acc, dr)
     }
     fn stac(&mut self) {
-        self.set_from_memory(Register::dr, Register::ar);
+        self.set_from_memory(dr, ar);
         self.increment_pc();
-        self.transfer_value(Register::ar, Register::dr);
-        self.transfer_value(Register::dr, Register::acc);
+        self.transfer_value(ar, dr);
+        self.transfer_value(dr, acc);
         self.write_memory(
-            self.read_register(Register::ar),
-            self.read_register(Register::dr),
+            self.read_register(ar),
+            self.read_register(dr),
         )
     }
     fn halt(&mut self) {
-        self.write_register(Register::s, 1)
+        self.write_register(s, 1)
     }
 }
