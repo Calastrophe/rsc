@@ -1,7 +1,8 @@
+use itertools::cloned;
 use rustrsc::instruction_set::StandardInstructionDef;
 use rustrsc::types::Register::*;
 use rustrsc::types::{Instruction, Register};
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeMap};
 
 pub struct Emulator {
     pub registers: [i32; 9],
@@ -9,7 +10,8 @@ pub struct Emulator {
     debug_mode: bool,
     symbol_table: Option<HashMap<String, i32>>,
     holder_table: Option<HashMap<String, Vec<i32>>>,
-    breakpoints: Option<HashMap<u32, bool>>,
+    label_table: Option<BTreeMap<i32, String>>,
+    breakpoints: Option<HashMap<i32, bool>>,
 }
 
 impl Emulator {
@@ -20,6 +22,7 @@ impl Emulator {
             debug_mode: false,
             symbol_table: None,
             holder_table: None,
+            label_table: None,
             breakpoints: None,
         }
     }
@@ -27,10 +30,12 @@ impl Emulator {
         &mut self,
         symbol_table: Option<HashMap<String, i32>>,
         holder_table: Option<HashMap<String, Vec<i32>>>,
+        label_table: Option<BTreeMap<i32, String>>
     ) -> &mut Emulator {
         self.debug_mode = true;
         self.symbol_table = symbol_table;
         self.holder_table = holder_table;
+        self.label_table = label_table;
         self.breakpoints = Some(HashMap::from([(0, true)])); // We need a breakpoint for the first instruction otherwise execution will just happen like normal.
         self
     }
@@ -143,18 +148,44 @@ impl Emulator {
         }
     }
 
-    // Disassembles a certain range of instructions...
-    pub fn disas(&mut self, start: u32, end: u32) {
-        for addr in start..=end {
-            // Need to keep track of previous instruction and account for numbers after LDAC, STAC, JMP, JMPZ
-            // After making sure previous instruction is not LDAC, STAC, JMP, or JMPZ; use into() as it should not fail unless something already bad happened.
+    // Disassembles the current label, if no labels provided or not inside a label - all instructions will be printed.
+    pub fn disas(&mut self) {
+        let mut cloned_table = self.label_table.as_ref().unwrap().clone();
+        let mut right = cloned_table.split_off(&self.read_register(ir));
+        if let Some((start_pos, start_label)) = cloned_table.pop_last() {
+            if let Some((end_pos, end_label)) = right.pop_first() {
+                for addr in start_pos..=end_pos {
+                    if self.query_holder(addr) {
+                        println!("{:0<8} {}", addr, self.read_memory(addr))
+                    } else {
+                        println!("{:0<8} {}", addr, Into::<&str>::into(Instruction::from(self.read_memory(addr))))
+                    }
+                }
+            } else {
+                // There is no end to this label, print till the end of instructions.
+                
+            }
+        } else {
+            // This is not inside a label
         }
+    }
+
+    // An unoptimized solution for identifying if a instruction at a certain position is actually a symbol or not.
+    fn query_holder(&mut self, addr: i32) -> bool {
+        for (_symbol, positions) in self.holder_table.as_mut().unwrap() {
+            for address in positions {
+                if *address == addr {
+                    return true
+                }
+            }
+        }
+        false
     }
 
     // Sets a breakpoint for the emulator to await for a command at...
     // The reason for the Option<bool> is to allow for easy checking with handler() and if let
-    pub fn bp(&mut self, addr: u32) -> Option<bool> {
-        if self.breakpoints.as_mut().unwrap().contains_key(&addr) {
+    pub fn bp(&mut self, addr: i32) -> Option<bool> {
+        if self.breakpoints.as_ref().unwrap().contains_key(&addr) {
             None
         } else {
             self.breakpoints.as_mut().unwrap().insert(addr, true);
@@ -162,7 +193,22 @@ impl Emulator {
         }
     }
 
-    pub fn enable(&mut self, addr: u32) -> Option<bool> {
+    pub fn bp_symbol(&mut self, sym: String) -> Option<bool> {
+        // Identify if that symbol exists
+        if let Some(pos) = self.symbol_table.as_ref().unwrap().get(&sym) {
+            // Check if its position is already a breakpoint
+            if self.breakpoints.as_ref().unwrap().contains_key(pos) {
+                None // is already present
+            } else {
+                self.breakpoints.as_mut().unwrap().insert(*pos, true); // is not present
+                Some(true)
+            }
+        } else {
+            None // Symbol does not exist
+        }
+    }
+
+    pub fn enable(&mut self, addr: i32) -> Option<bool> {
         if let Some(status) = self.breakpoints.as_mut().unwrap().get_mut(&addr) {
             *status = true;
             Some(*status)
@@ -172,7 +218,7 @@ impl Emulator {
         }
     }
 
-    pub fn disable(&mut self, addr: u32) -> Option<bool> {
+    pub fn disable(&mut self, addr: i32) -> Option<bool> {
         if let Some(status) = self.breakpoints.as_mut().unwrap().get_mut(&addr) {
             *status = false;
             Some(*status)
@@ -182,7 +228,14 @@ impl Emulator {
         }
     }
 
-    fn handler(&mut self) {}
+    fn handler(&mut self) {
+        let mut command = String::new();
+        if let Ok(bytes_read) = std::io::stdin().read_line(&mut command) {
+            match command.as_str() {
+                "disas" => self.disas()
+            }
+        }
+    }
 }
 
 impl StandardInstructionDef for Emulator {

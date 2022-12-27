@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use rustrsc::types::Instruction;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::i32;
 use std::io::Write;
 
@@ -8,6 +8,7 @@ pub struct Tokenizer {
     pub instructions: HashMap<i32, i32>,
     symbol_table: HashMap<String, i32>,
     holder_table: HashMap<String, Vec<i32>>,
+    label_table: BTreeMap<i32, String>,
 }
 
 impl Tokenizer {
@@ -16,6 +17,7 @@ impl Tokenizer {
             instructions: HashMap::new(),
             symbol_table: HashMap::new(),
             holder_table: HashMap::new(),
+            label_table: BTreeMap::new(),
         }
     }
 
@@ -126,6 +128,10 @@ impl Tokenizer {
             self.symbol_table.insert(
                 identifier[..identifier.len() - 1].to_string(),
                 self.instructions.len() as i32,
+            );
+            self.label_table.insert(
+                self.instructions.len() as i32,
+                identifier[..identifier.len() - 1].to_string(),
             );
         }
     }
