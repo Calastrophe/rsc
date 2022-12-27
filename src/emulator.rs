@@ -37,6 +37,7 @@ impl Emulator {
         self.holder_table = holder_table;
         self.label_table = label_table;
         self.breakpoints = Some(HashMap::from([(0, true)])); // We need a breakpoint for the first instruction otherwise execution will just happen like normal.
+        self.symbol_table.as_mut().unwrap().insert("end".to_string(), self.memory.len() as i32);
         self
     }
 
@@ -148,11 +149,12 @@ impl Emulator {
         }
     }
 
-    // Disassembles the current label, if no labels provided or not inside a label - all instructions will be printed.
+    
     pub fn disas(&mut self) {
         let mut cloned_table = self.label_table.as_ref().unwrap().clone();
         let mut right = cloned_table.split_off(&self.read_register(ir));
         if let Some((start_pos, start_label)) = cloned_table.pop_last() {
+            println!("{}", start_label);
             if let Some((end_pos, end_label)) = right.pop_first() {
                 for addr in start_pos..=end_pos {
                     if self.query_holder(addr) {
@@ -162,11 +164,16 @@ impl Emulator {
                     }
                 }
             } else {
-                // There is no end to this label, print till the end of instructions.
-                
+                for addr in 0..=self.symbol_table.as_ref().unwrap()["end"] {
+                    if self.query_holder(addr) {
+                        println!("{:0<8} {}", addr, self.read_memory(addr))
+                    } else {
+                        println!("{:0<8} {}", addr, Into::<&str>::into(Instruction::from(self.read_memory(addr))))
+                    }
+                }
             }
         } else {
-            // This is not inside a label
+            unreachable!()
         }
     }
 
