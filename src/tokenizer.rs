@@ -1,5 +1,5 @@
-use crate::emulator::Instruction;
 use itertools::Itertools;
+use rustrsc::types::Instruction;
 use std::collections::HashMap;
 use std::i32;
 use std::io::Write;

@@ -1,132 +1,15 @@
+use rustrsc::instruction_set::StandardInstructionDef;
+use rustrsc::types::Register::*;
+use rustrsc::types::{Instruction, Register};
 use std::collections::HashMap;
-use self::Register::*;
-
-#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
-pub enum Register {
-    acc,
-    r,
-    ir,
-    pc,
-    dr,
-    ar,
-    outr,
-    z,
-    s,
-}
-
-// https://stackoverflow.com/questions/21371534/in-rust-is-there-a-way-to-iterate-through-the-values-of-an-enum
-impl Register {
-   pub fn iterator() -> impl Iterator<Item = Register> {
-        [acc, r, ir, pc, dr, ar, outr, z, s].iter().copied()
-   }
-   pub fn as_str(&self) -> &str {
-        match self {
-            acc => "ACC",
-            r => "R",
-            ir => "IR",
-            pc => "PC",
-            dr => "DR",
-            ar => "AR",
-            outr => "OUTR",
-            z => "Z",
-            s => "S"
-        }
-    }
-} 
-
-#[derive(Debug)]
-pub enum Instruction {
-    HALT,
-    LDAC,
-    STAC,
-    MVAC,
-    MOVR,
-    JMP,
-    JMPZ,
-    OUT,
-    SUB,
-    ADD,
-    INC,
-    CLAC,
-    AND,
-    OR,
-    ASHR,
-    NOT,
-}
-
-
-impl<'a> From<&'a str> for Instruction {
-    fn from(other: &'a str) -> Self {
-        match other {
-            "HALT" => Instruction::HALT,
-            "LDAC" => Instruction::LDAC,
-            "STAC" => Instruction::STAC,
-            "MVAC" => Instruction::MVAC,
-            "MOVR" => Instruction::MOVR,
-            "JMP" => Instruction::JMP,
-            "JMPZ" => Instruction::JMPZ,
-            "OUT" => Instruction::OUT,
-            "SUB" => Instruction::SUB,
-            "ADD" => Instruction::ADD,
-            "INC" => Instruction::INC,
-            "CLAC" => Instruction::CLAC,
-            "AND" => Instruction::AND,
-            "OR" => Instruction::OR,
-            "ASHR" => Instruction::ASHR,
-            "NOT" => Instruction::NOT,
-            _ => panic!("Invalid conversion of &str to Instruction enum."),
-        }
-    }
-}
-
-impl From<i32> for Instruction {
-    fn from(other: i32) -> Self {
-        match other {
-            0 => Instruction::HALT,
-            1 => Instruction::LDAC,
-            2 => Instruction::STAC,
-            3 => Instruction::MVAC,
-            4 => Instruction::MOVR,
-            5 => Instruction::JMP,
-            6 => Instruction::JMPZ,
-            7 => Instruction::OUT,
-            8 => Instruction::SUB,
-            9 => Instruction::ADD,
-            10 => Instruction::INC,
-            11 => Instruction::CLAC,
-            12 => Instruction::AND,
-            13 => Instruction::OR,
-            14 => Instruction::ASHR,
-            15 => Instruction::NOT,
-            _ => unreachable!(),
-        }
-    }
-}
-
-// Seperate the instructions as a trait, so later, if you want to hot-change out instructions its easier!
-// Add another trait and add your own instructions or rework current ones.
-pub trait StandardInstructionDef {
-    fn not(&mut self);
-    fn ashr(&mut self);
-    fn or(&mut self);
-    fn and(&mut self);
-    fn clac(&mut self);
-    fn inc(&mut self);
-    fn add(&mut self);
-    fn sub(&mut self);
-    fn out(&mut self);
-    fn jmp(&mut self);
-    fn jmpz(&mut self);
-    fn movr(&mut self);
-    fn mvac(&mut self);
-    fn stac(&mut self);
-    fn ldac(&mut self);
-    fn halt(&mut self);
-}
 
 pub struct Emulator {
     pub registers: [i32; 9],
     memory: HashMap<i32, i32>,
+    debug_mode: bool,
+    symbol_table: Option<HashMap<String, i32>>,
+    holder_table: Option<HashMap<String, Vec<i32>>>,
+    breakpoints: Option<HashMap<u32, bool>>,
 }
 
 impl Emulator {
@@ -134,7 +17,22 @@ impl Emulator {
         Emulator {
             registers: [0, 0, 0, 0, 0, 0, 0, 0, 0],
             memory: instructions,
+            debug_mode: false,
+            symbol_table: None,
+            holder_table: None,
+            breakpoints: None,
         }
+    }
+    pub fn debug(
+        &mut self,
+        symbol_table: Option<HashMap<String, i32>>,
+        holder_table: Option<HashMap<String, Vec<i32>>>,
+    ) -> &mut Emulator {
+        self.debug_mode = true;
+        self.symbol_table = symbol_table;
+        self.holder_table = holder_table;
+        self.breakpoints = Some(HashMap::from([(0, true)])); // We need a breakpoint for the first instruction otherwise execution will just happen like normal.
+        self
     }
 
     // Read and write to registers, no need to check if valid position as it would fail at enum conversion.
@@ -224,12 +122,70 @@ impl Emulator {
         }
     }
 
+    pub fn start(&mut self) {
+        if self.debug_mode {
+            while !self.halted() {
+                self.handler();
+                self.execute();
+                self.fetch();
+            }
+        } else {
+            while !self.halted() {
+                self.execute();
+                self.fetch();
+            }
+        }
+    }
 
     pub fn display_contents(&self) {
         for reg in Register::iterator() {
             println!("{}: 0x{:X}", reg.as_str(), self.registers[reg as usize]);
         }
     }
+
+    // Disassembles a certain range of instructions...
+    pub fn disas(&mut self, start: u32, end: u32) {
+        for addr in start..=end {
+            println!(
+                "{:0<8}: {}",
+                addr,
+                Into::<&str>::into(Instruction::from(self.read_memory(addr as i32)))
+            )
+        }
+    }
+
+    // Sets a breakpoint for the emulator to await for a command at...
+    // The reason for the Option<bool> is to allow for easy checking with handler() and if let
+    pub fn bp(&mut self, addr: u32) -> Option<bool> {
+        if self.breakpoints.as_mut().unwrap().contains_key(&addr) {
+            None
+        } else {
+            self.breakpoints.as_mut().unwrap().insert(addr, true);
+            Some(true)
+        }
+    }
+
+    pub fn enable(&mut self, addr: u32) -> Option<bool> {
+        if let Some(status) = self.breakpoints.as_mut().unwrap().get_mut(&addr) {
+            *status = true;
+            Some(*status)
+        }
+        else {
+            None
+        }
+    }
+
+    pub fn disable(&mut self, addr: u32) -> Option<bool> {
+        if let Some(status) = self.breakpoints.as_mut().unwrap().get_mut(&addr) {
+            *status = false;
+            Some(*status)
+        }
+        else {
+            None
+        }
+    }
+
+    fn handler(&mut self) {}
 }
 
 impl StandardInstructionDef for Emulator {
@@ -297,10 +253,7 @@ impl StandardInstructionDef for Emulator {
         self.increment_pc();
         self.transfer_value(ar, dr);
         self.transfer_value(dr, acc);
-        self.write_memory(
-            self.read_register(ar),
-            self.read_register(dr),
-        )
+        self.write_memory(self.read_register(ar), self.read_register(dr))
     }
     fn halt(&mut self) {
         self.write_register(s, 1)

@@ -4,8 +4,7 @@ pub mod tokenizer;
 use crate::emulator::Emulator;
 use std::{env, fs};
 
-
-// TODO: Refactor the command line arguments
+// TODO: Refactor the command line arguments with CLAP
 fn main() {
     let args: Vec<String> = env::args().collect();
     if let Some(arg1) = args.get(1) {
@@ -14,7 +13,10 @@ fn main() {
                 if args.len() < 4 {
                     println!("usage: rustrsc assembler [input] [output]")
                 } else {
-                    assembler(args.get(2).unwrap().to_string(), args.get(3).unwrap().to_string())
+                    assembler(
+                        args.get(2).unwrap().to_string(),
+                        args.get(3).unwrap().to_string(),
+                    )
                 }
             }
             "run" => {
@@ -28,8 +30,7 @@ fn main() {
                 println!("usage: rustrsc [run|assembler] [input] [output]")
             }
         }
-    }
-    else {
+    } else {
         println!("usage: rustrsc [run|assembler] [input] [output]")
     }
 }
@@ -45,13 +46,9 @@ fn run(input: String) {
     let input = fs::read_to_string(input).expect("Failure to read the file.");
     let mut tokenizer_obj = tokenizer::Tokenizer::new();
     tokenizer_obj.parse(input.as_str());
-    let mut main_emu = Emulator::new(tokenizer_obj.instructions);
-    while !main_emu.halted() {
-        main_emu.fetch();
-        main_emu.execute();
-    }
-    main_emu.display_contents();
+    let mut emu = Emulator::new(tokenizer_obj.instructions);
+    emu.start();
+    emu.display_contents();
 }
-
 
 // TODO: Write a bunch of test cases to catch any errors that arouse from later changes.
