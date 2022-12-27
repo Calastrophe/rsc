@@ -146,11 +146,8 @@ impl Emulator {
     // Disassembles a certain range of instructions...
     pub fn disas(&mut self, start: u32, end: u32) {
         for addr in start..=end {
-            println!(
-                "{:0<8}: {}",
-                addr,
-                Into::<&str>::into(Instruction::from(self.read_memory(addr as i32)))
-            )
+            // Need to keep track of previous instruction and account for numbers after LDAC, STAC, JMP, JMPZ
+            // After making sure previous instruction is not LDAC, STAC, JMP, or JMPZ; use into() as it should not fail unless something already bad happened.
         }
     }
 
