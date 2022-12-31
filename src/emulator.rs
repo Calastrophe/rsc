@@ -1,8 +1,9 @@
-use itertools::cloned;
 use rustrsc::instruction_set::StandardInstructionDef;
 use rustrsc::types::Register::*;
 use rustrsc::types::{Instruction, Register};
+use rustrsc::error_types::*;
 use std::collections::{HashMap, BTreeMap};
+
 
 pub struct Emulator {
     pub registers: [i32; 9],
@@ -148,7 +149,6 @@ impl Emulator {
             println!("{}: 0x{:X}", reg.as_str(), self.registers[reg as usize]);
         }
     }
-
     
     pub fn disas(&mut self) {
         let mut cloned_table = self.label_table.as_ref().unwrap().clone();
@@ -191,47 +191,47 @@ impl Emulator {
 
     // Sets a breakpoint for the emulator to await for a command at...
     // The reason for the Option<bool> is to allow for easy checking with handler() and if let
-    pub fn bp(&mut self, addr: i32) -> Option<bool> {
+    pub fn bp(&mut self, addr: i32) -> Result<(), BreakpointExists> {
         if self.breakpoints.as_ref().unwrap().contains_key(&addr) {
-            None
+            Err(BreakpointExists)
         } else {
             self.breakpoints.as_mut().unwrap().insert(addr, true);
-            Some(true)
+            Ok(())
         }
     }
 
-    pub fn bp_symbol(&mut self, sym: String) -> Option<bool> {
+    pub fn bp_symbol(&mut self, sym: String) -> Result<(), Box<dyn std::error::Error>> {
         // Identify if that symbol exists
         if let Some(pos) = self.symbol_table.as_ref().unwrap().get(&sym) {
             // Check if its position is already a breakpoint
             if self.breakpoints.as_ref().unwrap().contains_key(pos) {
-                None // is already present
+                Err(BreakpointExists.into()) // is already present
             } else {
                 self.breakpoints.as_mut().unwrap().insert(*pos, true); // is not present
-                Some(true)
+                Ok(())
             }
         } else {
-            None // Symbol does not exist
+            Err(SymbolNotFound.into()) // Symbol does not exist
         }
     }
 
-    pub fn enable(&mut self, addr: i32) -> Option<bool> {
+    pub fn enable(&mut self, addr: i32) -> Result<(), BreakpointNonexistent> {
         if let Some(status) = self.breakpoints.as_mut().unwrap().get_mut(&addr) {
             *status = true;
-            Some(*status)
+            Ok(())
         }
         else {
-            None
+            Err(BreakpointNonexistent)
         }
     }
 
-    pub fn disable(&mut self, addr: i32) -> Option<bool> {
+    pub fn disable(&mut self, addr: i32) -> Result<(), BreakpointNonexistent> {
         if let Some(status) = self.breakpoints.as_mut().unwrap().get_mut(&addr) {
             *status = false;
-            Some(*status)
+            Ok(())
         }
         else {
-            None
+            Err(BreakpointNonexistent)
         }
     }
 
@@ -239,7 +239,8 @@ impl Emulator {
         let mut command = String::new();
         if let Ok(bytes_read) = std::io::stdin().read_line(&mut command) {
             match command.as_str() {
-                "disas" => self.disas()
+                "disas" => self.disas(),
+                &_ => todo!()
             }
         }
     }

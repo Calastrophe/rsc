@@ -1,3 +1,4 @@
+
 pub mod types {
 
     #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
@@ -156,4 +157,27 @@ pub mod instruction_set {
         fn ldac(&mut self);
         fn halt(&mut self);
     }
+}
+
+pub mod error_types { 
+    
+    macro_rules! error_type {
+        ($name:ident, $resp:expr) => {
+            #[derive(Debug)]
+            pub struct $name;
+
+            impl std::error::Error for $name {}
+
+            impl std::fmt::Display for $name {
+                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    write!(f, $resp)
+                }
+            }
+        };
+    }
+
+
+    error_type!(BreakpointNonexistent, "This breakpoint does not exist.");
+    error_type!(BreakpointExists, "This breakpoint already exists.");
+    error_type!(SymbolNotFound, "The given symbol does not exist.");
 }
