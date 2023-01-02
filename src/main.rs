@@ -23,15 +23,22 @@ fn main() {
                 if args.len() < 3 {
                     println!("usage: rustrsc run [input]")
                 } else {
-                    run(args.get(2).unwrap().to_string())
+                    run(args.get(2).unwrap().to_string(), false)
+                }
+            }
+            "debug" => {
+                if args.len() < 3 {
+                    println!("usage: rustrsc debug [input]")
+                } else {
+                    run(args.get(2).unwrap().to_string(), true)
                 }
             }
             _ => {
-                println!("usage: rustrsc [run|assembler] [input] [output]")
+                println!("usage: rustrsc [run|assembler|debug] [input] [output]")
             }
         }
     } else {
-        println!("usage: rustrsc [run|assembler] [input] [output]")
+        println!("usage: rustrsc [run|assembler|debug] [input] [output]")
     }
 }
 
@@ -42,11 +49,18 @@ fn assembler(input: String, output: String) {
     tokenizer_obj.export(output.as_str())
 }
 
-fn run(input: String) {
+fn run(input: String, debug: bool) {
     let input = fs::read_to_string(input).expect("Failure to read the file.");
     let mut tokenizer_obj = tokenizer::Tokenizer::new();
     tokenizer_obj.parse(input.as_str());
     let mut emu = Emulator::new(tokenizer_obj.instructions);
+    if debug {
+        emu.debug(
+            Some(tokenizer_obj.symbol_table),
+            Some(tokenizer_obj.holder_table),
+            Some(tokenizer_obj.label_table),
+        );
+    }
     emu.start();
     emu.display_contents();
 }

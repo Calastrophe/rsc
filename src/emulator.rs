@@ -1,9 +1,8 @@
+use rustrsc::error_types::*;
 use rustrsc::instruction_set::StandardInstructionDef;
 use rustrsc::types::Register::*;
 use rustrsc::types::{Instruction, Register};
-use rustrsc::error_types::*;
-use std::collections::{HashMap, BTreeMap};
-
+use std::collections::{BTreeMap, HashMap};
 
 pub struct Emulator {
     pub registers: [i32; 9],
@@ -31,14 +30,17 @@ impl Emulator {
         &mut self,
         symbol_table: Option<HashMap<String, i32>>,
         holder_table: Option<HashMap<String, Vec<i32>>>,
-        label_table: Option<BTreeMap<i32, String>>
+        label_table: Option<BTreeMap<i32, String>>,
     ) -> &mut Emulator {
         self.debug_mode = true;
         self.symbol_table = symbol_table;
         self.holder_table = holder_table;
         self.label_table = label_table;
         self.breakpoints = Some(HashMap::from([(0, true)])); // We need a breakpoint for the first instruction otherwise execution will just happen like normal.
-        self.symbol_table.as_mut().unwrap().insert("end".to_string(), self.memory.len() as i32);
+        self.symbol_table
+            .as_mut()
+            .unwrap()
+            .insert("end".to_string(), self.memory.len() as i32);
         self
     }
 
@@ -149,18 +151,22 @@ impl Emulator {
             println!("{}: 0x{:X}", reg.as_str(), self.registers[reg as usize]);
         }
     }
-    
-    pub fn disas(&mut self) {
+
+    pub fn disas(&mut self) -> Result<(), DebuggerError> {
         let mut cloned_table = self.label_table.as_ref().unwrap().clone();
         let mut right = cloned_table.split_off(&self.read_register(ir));
         if let Some((start_pos, start_label)) = cloned_table.pop_last() {
             println!("{}", start_label);
-            if let Some((end_pos, end_label)) = right.pop_first() {
+            if let Some((end_pos, _end_label)) = right.pop_first() {
                 for addr in start_pos..=end_pos {
                     if self.query_holder(addr) {
                         println!("{:0<8} {}", addr, self.read_memory(addr))
                     } else {
-                        println!("{:0<8} {}", addr, Into::<&str>::into(Instruction::from(self.read_memory(addr))))
+                        println!(
+                            "{:0<8} {}",
+                            addr,
+                            Into::<&str>::into(Instruction::from(self.read_memory(addr)))
+                        )
                     }
                 }
             } else {
@@ -168,21 +174,27 @@ impl Emulator {
                     if self.query_holder(addr) {
                         println!("{:0<8} {}", addr, self.read_memory(addr))
                     } else {
-                        println!("{:0<8} {}", addr, Into::<&str>::into(Instruction::from(self.read_memory(addr))))
+                        println!(
+                            "{:0<8} {}",
+                            addr,
+                            Into::<&str>::into(Instruction::from(self.read_memory(addr)))
+                        )
                     }
                 }
             }
         } else {
             unreachable!()
         }
+        Ok(())
     }
 
     // An unoptimized solution for identifying if a instruction at a certain position is actually a symbol or not.
+    // TODO: Convert into hashmap, just use index'ing to check if position is a holder value
     fn query_holder(&mut self, addr: i32) -> bool {
-        for (_symbol, positions) in self.holder_table.as_mut().unwrap() {
-            for address in positions {
+        for symbol in self.holder_table.as_ref().unwrap().values() {
+            for address in symbol {
                 if *address == addr {
-                    return true
+                    return true;
                 }
             }
         }
@@ -191,57 +203,114 @@ impl Emulator {
 
     // Sets a breakpoint for the emulator to await for a command at...
     // The reason for the Option<bool> is to allow for easy checking with handler() and if let
-    pub fn bp(&mut self, addr: i32) -> Result<(), BreakpointExists> {
+    pub fn bp(&mut self, addr: i32) -> Result<(), DebuggerError> {
         if self.breakpoints.as_ref().unwrap().contains_key(&addr) {
-            Err(BreakpointExists)
+            Err(DebuggerError::BreakpointExists)
         } else {
             self.breakpoints.as_mut().unwrap().insert(addr, true);
             Ok(())
         }
     }
 
-    pub fn bp_symbol(&mut self, sym: String) -> Result<(), Box<dyn std::error::Error>> {
-        // Identify if that symbol exists
-        if let Some(pos) = self.symbol_table.as_ref().unwrap().get(&sym) {
-            // Check if its position is already a breakpoint
-            if self.breakpoints.as_ref().unwrap().contains_key(pos) {
-                Err(BreakpointExists.into()) // is already present
-            } else {
-                self.breakpoints.as_mut().unwrap().insert(*pos, true); // is not present
-                Ok(())
-            }
+    pub fn bp_symbol(&mut self, sym: &str) -> Result<(), DebuggerError> {
+        let sym_pos = self
+            .symbol_table
+            .as_ref()
+            .unwrap()
+            .get(&sym.to_string())
+            .ok_or(DebuggerError::SymbolNotFound)?;
+        if self.breakpoints.as_ref().unwrap().contains_key(sym_pos) {
+            Err(DebuggerError::BreakpointExists) // is already present
         } else {
-            Err(SymbolNotFound.into()) // Symbol does not exist
-        }
-    }
-
-    pub fn enable(&mut self, addr: i32) -> Result<(), BreakpointNonexistent> {
-        if let Some(status) = self.breakpoints.as_mut().unwrap().get_mut(&addr) {
-            *status = true;
+            self.breakpoints.as_mut().unwrap().insert(*sym_pos, true); // is not present
             Ok(())
         }
-        else {
-            Err(BreakpointNonexistent)
-        }
     }
 
-    pub fn disable(&mut self, addr: i32) -> Result<(), BreakpointNonexistent> {
-        if let Some(status) = self.breakpoints.as_mut().unwrap().get_mut(&addr) {
-            *status = false;
-            Ok(())
-        }
-        else {
-            Err(BreakpointNonexistent)
-        }
+    pub fn enable(&mut self, addr: i32) -> Result<(), DebuggerError> {
+        let status = self
+            .breakpoints
+            .as_mut()
+            .unwrap()
+            .get_mut(&addr)
+            .ok_or(DebuggerError::BreakpointNonexistent)?;
+        *status = true;
+        Ok(())
     }
 
+    pub fn disable(&mut self, addr: i32) -> Result<(), DebuggerError> {
+        let status = self
+            .breakpoints
+            .as_mut()
+            .unwrap()
+            .get_mut(&addr)
+            .ok_or(DebuggerError::BreakpointNonexistent)?;
+        *status = false;
+        Ok(())
+    }
+
+    // First iteration of handler and switch function, heavily unoptimized.
     fn handler(&mut self) {
         let mut command = String::new();
-        if let Ok(bytes_read) = std::io::stdin().read_line(&mut command) {
-            match command.as_str() {
-                "disas" => self.disas(),
-                &_ => todo!()
+        let _bytes_read = std::io::stdin().read_line(&mut command).unwrap(); // May panic, need to change.
+        let vec_command: Vec<&str> = command.split(' ').collect();
+        if let Some(first_arg) = vec_command.first() {
+            match self.switch(first_arg, &vec_command) {
+                Ok(_) => (),
+                Err(e) => {
+                    println!("{}", e);
+                    self.handler()
+                } // Recursion! Bad! Kill this in future!
             }
+        } else {
+            println!("{}", DebuggerError::InvalidCommand);
+            self.handler()
+        }
+    }
+
+    fn switch(&mut self, first_arg: &str, args: &[&str]) -> Result<(), DebuggerError> {
+        match first_arg {
+            "disas" => self.disas(),
+            "bp" => {
+                let bp_arg = args
+                    .get(1)
+                    .ok_or(DebuggerError::InvalidArgument)
+                    .cloned()
+                    .unwrap()
+                    .parse()
+                    .map_err(|e| DebuggerError::ParseIntError { source: (e) })
+                    .unwrap();
+                self.bp(bp_arg)
+            }
+            "symbp" => {
+                let bp_arg = args
+                    .get(1)
+                    .cloned()
+                    .ok_or(DebuggerError::InvalidArgument)
+                    .unwrap();
+                self.bp_symbol(bp_arg)
+            }
+            "enable" => {
+                let arg = args
+                    .get(1)
+                    .cloned()
+                    .unwrap()
+                    .parse()
+                    .map_err(|e| DebuggerError::ParseIntError { source: (e) })
+                    .unwrap();
+                self.enable(arg)
+            }
+            "disable" => {
+                let arg = args
+                    .get(1)
+                    .cloned()
+                    .unwrap()
+                    .parse()
+                    .map_err(|e| DebuggerError::ParseIntError { source: (e) })
+                    .unwrap();
+                self.enable(arg)
+            }
+            _ => Err(DebuggerError::InvalidCommand),
         }
     }
 }

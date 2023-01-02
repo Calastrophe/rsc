@@ -6,9 +6,9 @@ use std::io::Write;
 
 pub struct Tokenizer {
     pub instructions: HashMap<i32, i32>,
-    symbol_table: HashMap<String, i32>,
-    holder_table: HashMap<String, Vec<i32>>,
-    label_table: BTreeMap<i32, String>,
+    pub symbol_table: HashMap<String, i32>,
+    pub holder_table: HashMap<String, Vec<i32>>,
+    pub label_table: BTreeMap<i32, String>,
 }
 
 impl Tokenizer {
@@ -80,7 +80,9 @@ impl Tokenizer {
     // Replaces the holder variables currently in the instructions with the ones in the symbol table.
     fn replace_instructions(&mut self) {
         for (key, pos_vec) in &self.holder_table {
+            println!("{}", *key);
             for val in pos_vec {
+                println!("{} {}", *key, *val);
                 self.instructions.insert(*val, self.symbol_table[key]);
             }
         }
@@ -101,6 +103,10 @@ impl Tokenizer {
             .insert(self.instructions.len() as i32, instruction as i32);
         // The operand may not yet defined, so we just put a holder and store the holder in the HashMap.
         self.instructions.insert(self.instructions.len() as i32, 0);
+
+        if let Ok(num) = i32::from_str_radix(op, 16) {
+            
+        }
 
         // A variable may occur multiple times, so positions are one or many so we use a vector and push onto it with the variable's name as a key.
         let holder = self

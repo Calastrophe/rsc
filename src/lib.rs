@@ -1,4 +1,3 @@
-
 pub mod types {
 
     #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
@@ -159,25 +158,24 @@ pub mod instruction_set {
     }
 }
 
-pub mod error_types { 
-    
-    macro_rules! error_type {
-        ($name:ident, $resp:expr) => {
-            #[derive(Debug)]
-            pub struct $name;
-
-            impl std::error::Error for $name {}
-
-            impl std::fmt::Display for $name {
-                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                    write!(f, $resp)
-                }
-            }
-        };
+pub mod error_types {
+    use thiserror::Error;
+    #[derive(Error, Debug)]
+    pub enum DebuggerError {
+        #[error("This breakpoint already exists.")]
+        BreakpointExists,
+        #[error("The given symbol was not found.")]
+        SymbolNotFound,
+        #[error("The given breakpoint does not exist.")]
+        BreakpointNonexistent,
+        #[error("You entered an invalid command.")]
+        InvalidCommand,
+        #[error("You entered an invalid argument.")]
+        InvalidArgument,
+        #[error("There was an issue parsing the given number.")]
+        ParseIntError {
+            #[from]
+            source: std::num::ParseIntError,
+        },
     }
-
-
-    error_type!(BreakpointNonexistent, "This breakpoint does not exist.");
-    error_type!(BreakpointExists, "This breakpoint already exists.");
-    error_type!(SymbolNotFound, "The given symbol does not exist.");
 }
