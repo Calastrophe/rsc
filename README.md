@@ -13,4 +13,4 @@ There are two options, running the given microcode file or assembling it into a 
 
 **Using the in-built assembler to generate logisim formatted bytecode**
 
-``rustrsc assembler microcode.txt output.txt``
+``rustrsc assemble microcode.txt output.txt``

@@ -1,6 +1,7 @@
 pub mod emulator;
 pub mod lexer;
-use clap::{Parser, Subcommand};
+use clap::ArgAction::Count;
+use clap::{Args, Parser, Subcommand};
 use emulator::Emulator;
 use lexer::Lexer;
 
@@ -9,24 +10,35 @@ use lexer::Lexer;
 #[command(propagate_version = true)]
 struct Cli {
     #[command(subcommand)]
-    command: Commands,
+    command: Option<Command>,
+    #[arg(short, long, action = Count, help = "For debugging purposes, but allows for deciding how verbose you want the emulation.")]
+    verbose: u8,
 }
 
 #[derive(Subcommand)]
-enum Commands {
+enum Command {
     /// Emulates a given input file to the end of computation.
-    Emulate { input: String },
+    Run { input: String },
     /// Assembles a given input file into Logisim compatiable format named with the provided output name.
     Assemble { input: String, output: String },
     /// Debugs a given input file, allowing for breakpoints, stepping through code and introspection.
     Debug { input: String },
 }
 
-// Create a parser with subcommands for emulating, assembling, and debugging.
-// Add a verbose option.
-
 fn main() {
     let cli = Cli::parse();
+
+    match cli.command {
+        Some(command) => match command {
+            Command::Run { input } => {}
+            Command::Assemble { input, output } => {}
+            Command::Debug { input } => {}
+        },
+        None => {
+            // GUI
+            todo!()
+        }
+    }
 }
 
 #[cfg(test)]

@@ -36,6 +36,7 @@ impl<'a> Lexer<'a> {
 
     fn next_tokens(&mut self) -> Option<Vec<Token<'a>>> {
         let line = self.next_line()?;
+        // We are doing this because we want to chop off the comment if there is one.
         let mut modified_line = line
             .split_once(";")
             .map(|(split_line, _c)| split_line)
