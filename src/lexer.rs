@@ -24,7 +24,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn next_line(&mut self) -> Option<&str> {
+    fn next_line(&mut self) -> Option<&'a str> {
         let mut line = self.lines.next()?;
         self.line_number += 1;
         while line.is_empty() {
