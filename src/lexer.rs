@@ -1,5 +1,4 @@
 use crate::emulator::Instruction;
-use std::iter::Filter;
 use std::str::{FromStr, Lines};
 
 #[derive(Debug, Clone, Copy)]
@@ -12,23 +11,26 @@ pub enum Token<'a> {
     LabelRef(&'a str),
 }
 
-// LABEL: NONE
-
 pub struct Lexer<'a> {
-    lines: Filter<Lines<'a>, fn(&&str) -> bool>,
+    lines: Lines<'a>,
     line_number: usize,
 }
 
 impl<'a> Lexer<'a> {
     pub fn new(input: &'a str) -> Self {
         Lexer {
-            lines: input.lines().filter(|l| !l.is_empty()),
+            lines: input.lines(),
             line_number: 0,
         }
     }
 
-    pub fn next_token(&mut self) -> Option<Vec<Token<'a>>> {
-        let line = self.lines.next()?;
+    pub fn next_tokens(&mut self) -> Option<Vec<Token<'a>>> {
+        let mut line = self.lines.next()?;
+        self.line_number += 1;
+        while line.is_empty() {
+            line = self.lines.next()?;
+            self.line_number += 1;
+        }
         let mut modified_line = line
             .split_once(";")
             .map(|(split_line, _c)| split_line)
@@ -74,7 +76,7 @@ impl<'a> Lexer<'a> {
     // TODO: Figure out why a lifetime is really needed here, why can't the compiler elide it?
     pub fn tokenize(&'a mut self) -> Vec<Token> {
         let mut tokens: Vec<Token<'a>> = Vec::new();
-        while let Some(new_tokens) = self.next_token() {
+        while let Some(new_tokens) = self.next_tokens() {
             tokens.extend(new_tokens)
         }
         tokens
