@@ -1,6 +1,6 @@
 use crate::emulator::Instruction;
-use std::str::FromStr;
-use std::str::Lines;
+use std::iter::Filter;
+use std::str::{FromStr, Lines};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Token<'a> {
@@ -10,30 +10,25 @@ pub enum Token<'a> {
     VariableRef(&'a str),
     Label(&'a str),
     LabelRef(&'a str),
-    None,
 }
 
 // LABEL: NONE
 
 pub struct Lexer<'a> {
-    lines: Lines<'a>,
+    lines: Filter<Lines<'a>, fn(&&str) -> bool>,
     line_number: usize,
 }
 
 impl<'a> Lexer<'a> {
     pub fn new(input: &'a str) -> Self {
         Lexer {
-            lines: input.lines(),
+            lines: input.lines().filter(|l| !l.is_empty()),
             line_number: 0,
         }
     }
 
-    pub fn next_pair(&mut self) -> Option<Vec<Token<'a>>> {
-        let mut line = self.lines.next()?;
-        // Potentially replace this with a skip_while?
-        while line.is_empty() {
-            line = self.lines.next()?;
-        }
+    pub fn next_token(&mut self) -> Option<Vec<Token<'a>>> {
+        let line = self.lines.next()?;
         let mut modified_line = line
             .split_once(";")
             .map(|(split_line, _c)| split_line)
@@ -79,7 +74,7 @@ impl<'a> Lexer<'a> {
     // TODO: Figure out why a lifetime is really needed here, why can't the compiler elide it?
     pub fn tokenize(&'a mut self) -> Vec<Token> {
         let mut tokens: Vec<Token<'a>> = Vec::new();
-        while let Some(new_tokens) = self.next_pair() {
+        while let Some(new_tokens) = self.next_token() {
             tokens.extend(new_tokens)
         }
         tokens
