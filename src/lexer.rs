@@ -24,13 +24,18 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    pub fn next_tokens(&mut self) -> Option<Vec<Token<'a>>> {
+    fn next_line(&mut self) -> Option<&str> {
         let mut line = self.lines.next()?;
         self.line_number += 1;
         while line.is_empty() {
             line = self.lines.next()?;
             self.line_number += 1;
         }
+        Some(line)
+    }
+
+    fn next_tokens(&mut self) -> Option<Vec<Token<'a>>> {
+        let line = self.next_line()?;
         let mut modified_line = line
             .split_once(";")
             .map(|(split_line, _c)| split_line)
