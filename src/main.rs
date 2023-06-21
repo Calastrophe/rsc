@@ -1,68 +1,43 @@
-#[allow(non_camel_case_types)]
 pub mod emulator;
-pub mod tokenizer;
-use crate::emulator::Emulator;
-use std::{env, fs};
+pub mod lexer;
+use clap::{Parser, Subcommand};
+use emulator::Emulator;
+use lexer::Lexer;
 
-// TODO: Refactor the command line arguments with CLAP
+#[derive(Parser)]
+#[command(author="Calastrophe", version, about, long_about = None)]
+#[command(propagate_version = true)]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Emulates a given input file to the end of computation.
+    Emulate { input: String },
+    /// Assembles a given input file into Logisim compatiable format named with the provided output name.
+    Assemble { input: String, output: String },
+    /// Debugs a given input file, allowing for breakpoints, stepping through code and introspection.
+    Debug { input: String },
+}
+
+// Create a parser with subcommands for emulating, assembling, and debugging.
+// Add a verbose option.
+
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    if let Some(arg1) = args.get(1) {
-        match arg1.as_str() {
-            "assembler" => {
-                if args.len() < 4 {
-                    println!("usage: rustrsc assembler [input] [output]")
-                } else {
-                    assembler(
-                        args.get(2).unwrap().to_string(),
-                        args.get(3).unwrap().to_string(),
-                    )
-                }
-            }
-            "run" => {
-                if args.len() < 3 {
-                    println!("usage: rustrsc run [input]")
-                } else {
-                    run(args.get(2).unwrap().to_string(), false)
-                }
-            }
-            "debug" => {
-                if args.len() < 3 {
-                    println!("usage: rustrsc debug [input]")
-                } else {
-                    run(args.get(2).unwrap().to_string(), true)
-                }
-            }
-            _ => {
-                println!("usage: rustrsc [run|assembler|debug] [input] [output]")
-            }
-        }
-    } else {
-        println!("usage: rustrsc [run|assembler|debug] [input] [output]")
+    let cli = Cli::parse();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn lexer_test() -> Result<(), Box<dyn std::error::Error>> {
+        let input = std::fs::read_to_string("tests/selection_sort.txt")?;
+        let mut lexer = Lexer::new(&input);
+        let tokens = lexer.tokenize();
+        println!("{:?}", tokens);
+        Ok(())
     }
 }
-
-fn assembler(input: String, output: String) {
-    let input = fs::read_to_string(input).expect("Failure to read the file.");
-    let mut tokenizer_obj = tokenizer::Tokenizer::new();
-    tokenizer_obj.parse(input.as_str());
-    tokenizer_obj.export(output.as_str())
-}
-
-fn run(input: String, debug: bool) {
-    let input = fs::read_to_string(input).expect("Failure to read the file.");
-    let mut tokenizer_obj = tokenizer::Tokenizer::new();
-    tokenizer_obj.parse(input.as_str());
-    let mut emu = Emulator::new(tokenizer_obj.instructions);
-    if debug {
-        emu.debug(
-            Some(tokenizer_obj.symbol_table),
-            Some(tokenizer_obj.holder_table),
-            Some(tokenizer_obj.label_table),
-        );
-    }
-    emu.start();
-    emu.display_contents();
-}
-
-// TODO: Write a bunch of test cases to catch any errors that arouse from later changes.
