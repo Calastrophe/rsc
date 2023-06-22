@@ -119,14 +119,10 @@ impl Registers {
     }
 }
 
-struct Memory(HashMap<u32, u32>);
+#[derive(Debug)]
+pub struct Memory(pub HashMap<u32, u32>);
 
 impl Memory {
-    /// Creates psuedo-memory from a list of instructions generated from the parsing stage.
-    fn from_instructions(instructions: &[Instruction]) -> Self {
-        Memory(HashMap::new())
-    }
-
     /// Retrieves the value at the given address.
     fn get(&self, address: u32) -> u32 {
         // Avoid the needless insertion, just keep returning zero until its set.
@@ -148,10 +144,10 @@ pub struct Emulator {
 }
 
 impl Emulator {
-    pub fn new(instructions: &[Instruction]) -> Self {
+    pub fn new(mem: Memory) -> Self {
         Emulator {
             registers: Registers::new(),
-            memory: Memory::from_instructions(instructions),
+            memory: mem,
         }
     }
 
@@ -165,6 +161,7 @@ impl Emulator {
     }
 
     fn execute(&mut self, i: Instruction) {
+        println!("{:?}", i);
         match i {
             Instruction::LDAC => self.ldac(),
             Instruction::STAC => self.stac(),

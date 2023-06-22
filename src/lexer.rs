@@ -4,7 +4,7 @@ use std::str::{FromStr, Lines};
 #[derive(Debug, Clone, Copy)]
 pub enum Token<'a> {
     Number(u32),
-    Instruction(Instruction),
+    Instruction(u32),
     Variable(&'a str),
     VariableRef(&'a str),
     Label(&'a str),
@@ -62,7 +62,7 @@ impl<'a> Lexer<'a> {
             // Check to see if its an instruction, if not throw a parsing error.
             let instruction = Instruction::from_str(first)
                 .unwrap_or_else(|e| panic!("{:?} on line {}", e, self.line_number));
-            tokens.push(Token::Instruction(instruction));
+            tokens.push(Token::Instruction(instruction as u32));
             // If its an instruction that has an operand, we need to handle it.
             match instruction {
                 Instruction::LDAC | Instruction::STAC => {

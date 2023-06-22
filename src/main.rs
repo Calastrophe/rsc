@@ -1,7 +1,10 @@
+pub mod assembler;
+pub mod debugger;
 pub mod emulator;
 pub mod lexer;
+use assembler::Assembler;
 use clap::ArgAction::Count;
-use clap::{Args, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 use emulator::Emulator;
 use lexer::Lexer;
 
@@ -25,31 +28,32 @@ enum Command {
     Debug { input: String },
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     match cli.command {
         Some(command) => match command {
-            Command::Run { input } => {}
-            Command::Assemble { input, output } => {}
-            Command::Debug { input } => {}
+            Command::Run { input } => {
+                let input = std::fs::read_to_string(input)?;
+                let mut lexer = Lexer::new(&input);
+                let assembler = Assembler::assemble(lexer.tokenize());
+                let mut emulator = Emulator::new(assembler.as_memory());
+                emulator.start();
+            }
+            Command::Assemble { input, output } => {
+                let input = std::fs::read_to_string(input)?;
+                let mut lexer = Lexer::new(&input);
+                let assembler = Assembler::assemble(lexer.tokenize());
+                assembler.as_logisim(&output)?;
+            }
+            Command::Debug { input } => {
+                todo!()
+            }
         },
         None => {
             // GUI
             todo!()
         }
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn lexer_test() -> Result<(), Box<dyn std::error::Error>> {
-        let input = std::fs::read_to_string("tests/selection_sort.txt")?;
-        let mut lexer = Lexer::new(&input);
-        let tokens = lexer.tokenize();
-        println!("{:?}", tokens);
-        Ok(())
-    }
+    Ok(())
 }
