@@ -4,9 +4,8 @@ use std::io::Write;
 
 pub struct Assembler<'a> {
     instructions: HashMap<u32, u32>,
-    label_map: HashMap<&'a str, u32>,
-    variable_map: HashMap<&'a str, u32>,
-    replaced_instructions: HashMap<u32, &'a str>,
+    symbol_map: HashMap<Token<'a>, u32>,
+    replaced_instructions: HashMap<Token<'a>, u32>,
 }
 
 impl<'a> Assembler<'a> {
@@ -14,11 +13,8 @@ impl<'a> Assembler<'a> {
         let mut token_iter = tokens.into_iter();
         let mut current_address: u32 = 0;
         let mut instructions = HashMap::new();
-        let mut label_map = HashMap::new();
-        let mut variable_map = HashMap::new();
-        let mut label_replace = HashMap::new();
-        let mut variable_replace = HashMap::new();
-        let mut replaced_instructions = HashMap::new();
+        let mut symbol_map = HashMap::new();
+        let mut to_replace = HashMap::new();
         while let Some(token) = token_iter.next() {
             match token {
                 Token::Instruction(instruction) => {
@@ -26,10 +22,10 @@ impl<'a> Assembler<'a> {
                     current_address += 1;
                 }
                 Token::Label(label) => {
-                    label_map.insert(label, current_address);
+                    symbol_map.insert(token, current_address);
                 }
                 Token::Variable(var) => {
-                    variable_map.insert(var, current_address);
+                    symbol_map.insert(token, current_address);
                     let var_num = token_iter
                         .next()
                         .unwrap_or_else(|| panic!("failed to retrieve number for {var}"));
@@ -45,47 +41,36 @@ impl<'a> Assembler<'a> {
                     current_address += 1;
                 }
                 Token::LabelRef(label) => {
-                    if let Some(label) = label_map.get(&label) {
+                    if let Some(label) = symbol_map.get(&token) {
                         instructions.insert(current_address, *label);
                     } else {
-                        label_replace.insert(current_address, label);
+                        to_replace.insert(token, current_address);
                     }
                     current_address += 1;
                 }
                 Token::VariableRef(var) => {
-                    if let Some(var) = variable_map.get(&var) {
+                    if let Some(var) = symbol_map.get(&token) {
                         instructions.insert(current_address, *var);
                     } else {
-                        variable_replace.insert(current_address, var);
+                        to_replace.insert(token, current_address);
                     }
                     current_address += 1;
                 }
                 _ => unreachable!(),
             }
         }
-        for (address, label) in label_replace {
-            if let Some(label_pos) = label_map.get(&label) {
-                instructions.insert(address, *label_pos);
-                replaced_instructions.insert(address, label);
+        for (token, replace_addr) in symbol_map {
+            if let Some(address) = symbol_map.get(&token) {
+                instructions.insert(replace_addr, *address);
             } else {
-                panic!("failed to replace referenced label `{label}`");
-            }
-        }
-
-        for (address, var) in variable_replace {
-            if let Some(var_pos) = variable_map.get(&var) {
-                instructions.insert(address, *var_pos);
-                replaced_instructions.insert(address, var);
-            } else {
-                panic!("failed to replace referenced variable `{var}`");
+                panic!("failed to replace {:?}", token)
             }
         }
 
         Assembler {
             instructions,
-            label_map,
-            variable_map,
-            replaced_instructions,
+            symbol_map,
+            replaced_instructions: to_replace,
         }
     }
 

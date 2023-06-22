@@ -1,7 +1,7 @@
 use crate::emulator::Instruction;
 use std::str::{FromStr, Lines};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum Token<'a> {
     Number(u32),
     Instruction(u32),
