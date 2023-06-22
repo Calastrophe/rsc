@@ -5,7 +5,7 @@ pub mod lexer;
 use assembler::Assembler;
 use clap::ArgAction::Count;
 use clap::{Parser, Subcommand};
-use emulator::Emulator;
+use emulator::{Emulator, Memory};
 use lexer::Lexer;
 
 #[derive(Parser)]
@@ -36,14 +36,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Command::Run { input } => {
                 let input = std::fs::read_to_string(input)?;
                 let mut lexer = Lexer::new(&input);
-                let assembler = Assembler::assemble(lexer.tokenize());
-                let mut emulator = Emulator::new(assembler.as_memory());
+                let tokens = lexer.tokenize();
+                let assembler = Assembler::assemble(tokens);
+                let memory = Memory::new(&assembler.instructions);
+                let mut emulator = Emulator::new(memory);
                 emulator.start();
             }
             Command::Assemble { input, output } => {
                 let input = std::fs::read_to_string(input)?;
                 let mut lexer = Lexer::new(&input);
-                let assembler = Assembler::assemble(lexer.tokenize());
+                let tokens = lexer.tokenize();
+                let assembler = Assembler::assemble(tokens);
                 assembler.as_logisim(&output)?;
             }
             Command::Debug { input } => {

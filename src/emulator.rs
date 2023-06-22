@@ -120,9 +120,18 @@ impl Registers {
 }
 
 #[derive(Debug)]
-pub struct Memory(pub HashMap<u32, u32>);
+pub struct Memory(HashMap<u32, u32>);
 
 impl Memory {
+    pub fn new(instructions: &[u32]) -> Self {
+        let mut memory = HashMap::new();
+        for (count, instruction) in instructions.into_iter().enumerate() {
+            let count = count as u32;
+            memory.insert(count, *instruction);
+        }
+        Memory(memory)
+    }
+
     /// Retrieves the value at the given address.
     fn get(&self, address: u32) -> u32 {
         // Avoid the needless insertion, just keep returning zero until its set.
@@ -234,7 +243,7 @@ impl Emulator {
     }
 
     fn jmpz(&mut self) {
-        if self.check_z() {
+        if self.registers.get(Register::Z) == 1 {
             self.jmp()
         } else {
             self.inc_pc()
@@ -286,8 +295,16 @@ impl Emulator {
         self.memory.get(var_address)
     }
 
-    fn check_z(&self) -> bool {
-        self.registers.get(Register::Z) == 0
+    fn check_z(&mut self) -> bool {
+        let acc = self.registers.get(Register::ACC);
+        let z = self.registers.get_mut(Register::Z);
+        if acc == 0 {
+            *z = 1;
+            true
+        } else {
+            *z = 0;
+            false
+        }
     }
 
     fn halted(&self) -> bool {
