@@ -24,31 +24,25 @@ impl<'a> Assembler<'a> {
                 Token::Label(label) => {
                     symbol_map.insert(label, current_address);
                 }
-                Token::Variable(var) => {
-                    symbol_map.insert(var, current_address);
-                    let var_num = token_iter
-                        .next()
-                        .unwrap_or_else(|| panic!("failed to retrieve number for {var}"));
-                    match var_num {
-                        Token::Number(num) => {
-                            instructions.push(num);
-                        }
-                        _ => {
-                            panic!("expected number after {var} initilization")
-                        }
+                Token::Variable(var) => match token_iter.next() {
+                    Some(Token::Number(num)) => {
+                        symbol_map.insert(var, current_address);
+                        instructions.push(num);
                     }
-                }
+                    Some(_) => panic!("Expected number after {var} initialization"),
+                    None => panic!("Failed to retrieve next token for {var}"),
+                },
                 Token::LabelRef(label) => {
-                    if let Some(label_pos) = symbol_map.get(&label) {
-                        instructions.push(*label_pos);
+                    if let Some(&label_pos) = symbol_map.get(&label) {
+                        instructions.push(label_pos);
                     } else {
                         instructions.push(0);
                         to_replace.entry(label).or_default().push(current_address);
                     }
                 }
                 Token::VariableRef(var) => {
-                    if let Some(var_pos) = symbol_map.get(&var) {
-                        instructions.push(*var_pos);
+                    if let Some(&var_pos) = symbol_map.get(&var) {
+                        instructions.push(var_pos);
                     } else {
                         instructions.push(0);
                         to_replace.entry(var).or_default().push(current_address);
@@ -58,6 +52,7 @@ impl<'a> Assembler<'a> {
             }
         }
 
+        // TODO: Code golf this section
         // Replaces the placeholders if any, as LabelRef and VariableRef may have not all been put in yet.
         for (symbol, replace_addresses) in &to_replace {
             for replace_address in replace_addresses {

@@ -3,7 +3,7 @@ use thiserror::Error;
 
 /// All registers in the RSC architecture.
 #[derive(Debug)]
-enum Register {
+pub enum Register {
     S,
     Z,
     IR,
@@ -91,7 +91,7 @@ impl From<u32> for Instruction {
     }
 }
 
-struct Registers([u32; 9]);
+pub struct Registers([u32; 9]);
 
 impl Registers {
     pub fn new() -> Self {
@@ -148,8 +148,8 @@ impl Memory {
 }
 
 pub struct Emulator {
-    registers: Registers,
-    memory: Memory,
+    pub registers: Registers,
+    pub memory: Memory,
 }
 
 impl Emulator {
@@ -163,14 +163,17 @@ impl Emulator {
     /// Starts the emulation of the given instructions to the emulator.
     pub fn start(&mut self) {
         while !self.halted() {
-            self.check_z();
-            let instruction = self.fetch();
-            self.execute(instruction);
+            self.cycle();
         }
     }
 
+    pub fn cycle(&mut self) {
+        self.check_z();
+        let instruction = self.fetch();
+        self.execute(instruction)
+    }
+
     fn execute(&mut self, i: Instruction) {
-        println!("{:?}", i);
         match i {
             Instruction::LDAC => self.ldac(),
             Instruction::STAC => self.stac(),
@@ -307,7 +310,7 @@ impl Emulator {
         }
     }
 
-    fn halted(&self) -> bool {
+    pub fn halted(&self) -> bool {
         self.registers.get(Register::S) == 1
     }
 }
