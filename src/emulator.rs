@@ -167,6 +167,13 @@ impl Emulator {
         }
     }
 
+    /// Starts the emulation and executes until a given program counter is hit.
+    pub fn execute_until(&mut self, target_pc: u32) {
+        while !self.halted() || self.registers.get(Register::PC) == target_pc {
+            self.cycle()
+        }
+    }
+
     pub fn cycle(&mut self) {
         self.check_z();
         let instruction = self.fetch();
