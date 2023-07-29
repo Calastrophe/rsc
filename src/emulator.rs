@@ -99,21 +99,25 @@ impl Registers {
     }
 
     /// Retrieves the given registers current value.
+    #[inline(always)]
     pub fn get(&self, reg: Register) -> u32 {
         self.0[reg as usize]
     }
 
     /// Sets the registers content to the passed value.
+    #[inline(always)]
     pub fn set(&mut self, reg: Register, val: u32) {
         self.0[reg as usize] = val
     }
 
     /// Retrieves a mutuable reference to a register for easy manipulation.
+    #[inline(always)]
     pub fn get_mut(&mut self, reg: Register) -> &mut u32 {
         &mut self.0[reg as usize]
     }
 
     /// Transfers the source register contents to the destination register.
+    #[inline(always)]
     pub fn transfer(&mut self, src: Register, dest: Register) {
         self.0[dest as usize] = self.0[src as usize]
     }
@@ -174,6 +178,7 @@ impl Emulator {
         }
     }
 
+    /// One cycle of execution for the emulator
     pub fn cycle(&mut self) {
         self.check_z();
         let instruction = self.fetch();
@@ -237,11 +242,11 @@ impl Emulator {
     }
 
     fn mvac(&mut self) {
-        self.registers.transfer(Register::R, Register::ACC)
+        self.registers.transfer(Register::ACC, Register::R)
     }
 
     fn movr(&mut self) {
-        self.registers.transfer(Register::ACC, Register::R)
+        self.registers.transfer(Register::R, Register::ACC)
     }
 
     fn jmp(&mut self) {

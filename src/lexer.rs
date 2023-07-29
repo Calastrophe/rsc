@@ -17,11 +17,16 @@ pub struct Lexer<'a> {
 }
 
 impl<'a> Lexer<'a> {
-    pub fn new(input: &'a str) -> Self {
-        Lexer {
+    pub fn tokenize(input: &'a str) -> Vec<Token> {
+        let mut lexer = Lexer {
             lines: input.lines(),
             line_number: 0,
+        };
+        let mut tokens: Vec<Token> = Vec::new();
+        while let Some(new_tokens) = lexer.next_tokens() {
+            tokens.extend(new_tokens)
         }
+        tokens
     }
 
     fn next_line(&mut self) -> Option<&'a str> {
@@ -79,12 +84,5 @@ impl<'a> Lexer<'a> {
         Some(tokens)
     }
 
-    // TODO: Figure out why a lifetime is really needed here, why can't the compiler elide it?
-    pub fn tokenize(&'a mut self) -> Vec<Token> {
-        let mut tokens: Vec<Token<'a>> = Vec::new();
-        while let Some(new_tokens) = self.next_tokens() {
-            tokens.extend(new_tokens)
-        }
-        tokens
-    }
+
 }

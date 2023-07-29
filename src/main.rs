@@ -2,7 +2,6 @@ pub mod assembler;
 pub mod emulator;
 pub mod lexer;
 use assembler::Assembler;
-use clap::ArgAction::Count;
 use clap::{Parser, Subcommand};
 use emulator::{Emulator, Memory};
 use lexer::Lexer;
@@ -13,8 +12,6 @@ use lexer::Lexer;
 struct Cli {
     #[command(subcommand)]
     command: Command,
-    #[arg(short, long, action = Count, help = "For debugging purposes, but allows for deciding how verbose you want the emulation.")]
-    verbose: u8,
 }
 
 #[derive(Subcommand)]
@@ -31,8 +28,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     match cli.command {
         Command::Run { input } => {
             let input = std::fs::read_to_string(input)?;
-            let mut lexer = Lexer::new(&input);
-            let tokens = lexer.tokenize();
+            let tokens = Lexer::tokenize(&input);
             let assembler = Assembler::assemble(tokens);
             let memory = Memory::new(&assembler.instructions);
             let mut emulator = Emulator::new(memory);
@@ -40,8 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Command::Assemble { input, output } => {
             let input = std::fs::read_to_string(input)?;
-            let mut lexer = Lexer::new(&input);
-            let tokens = lexer.tokenize();
+            let tokens = Lexer::tokenize(&input);
             let assembler = Assembler::assemble(tokens);
             assembler.as_logisim(&output)?;
         }
