@@ -23,12 +23,13 @@ pub enum Token<'a> {
 }
 
 pub struct Assembler<'a> {
-    symbol_map: HashMap<&'a str, u32>,
-    replaced_instructions: HashMap<u32, &'a str>,
+    pub instructions: Vec<u32>,
+    pub symbol_map: HashMap<&'a str, u32>,
+    pub replaced_instructions: HashMap<u32, &'a str>,
 }
 
 impl<'a> Assembler<'a> {
-    pub fn parse(input: &'a str) -> (Vec<u32>, Self) {
+    pub fn parse(input: &'a str) -> Self {
         // TODO: Fix this error handling...
         let (_, tokens) = parse(input).expect("There was an issue parsing your file.");
 
@@ -67,20 +68,17 @@ impl<'a> Assembler<'a> {
             }
         }
 
-        (
+        Assembler {
             instructions,
-            Assembler {
-                symbol_map,
-                replaced_instructions: to_replace,
-            },
-        )
+            symbol_map,
+            replaced_instructions: to_replace,
+        }
     }
 
     pub fn as_logisim(i: &'a str, o: &str) -> Result<(), Box<dyn std::error::Error>> {
         todo!()
     }
 }
-
 
 fn parse<'a>(input: &'a str) -> IResult<&str, Vec<Token>> {
     separated_list0(

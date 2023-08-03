@@ -26,8 +26,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     match cli.command {
         Command::Run { input } => {
             let input = std::fs::read_to_string(input)?;
-            let (instructions, assembler) = Assembler::parse(&input);
-            let memory = Memory::new(&instructions);
+            let assembler = Assembler::parse(&input);
+            let memory = Memory::new(&assembler.instructions);
             let mut emulator = Emulator::new(memory);
             emulator.start();
         }

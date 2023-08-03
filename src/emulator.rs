@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use thiserror::Error;
 
-
 /// All registers in the RSC architecture.
 #[derive(Debug)]
 pub enum Register {
