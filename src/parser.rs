@@ -26,7 +26,7 @@ pub enum Token<'a> {
 pub struct Assembler<'a> {
     pub instructions: Vec<u32>,
     pub symbol_map: HashMap<&'a str, u32>,
-    pub replaced_instructions: HashMap<u32, &'a str>,
+    pub replaced_instructions: HashMap<usize, &'a str>,
 }
 
 impl<'a> Assembler<'a> {
@@ -46,13 +46,14 @@ impl<'a> Assembler<'a> {
                 }
                 Token::KeywordOperand(i, op) => {
                     instructions.extend([i as u32, 0]);
+                    let current_address = instructions.len();
                     to_replace.insert(current_address - 1, op);
                 }
                 Token::Label(label) => {
                     symbol_map.insert(label, current_address);
                 }
                 Token::LabelRef(name) | Token::VariableRef(name) => {
-                    to_replace.insert(current_address, name);
+                    to_replace.insert(current_address as usize, name);
                     instructions.push(0);
                 }
                 Token::Variable(var, value) => {
@@ -65,7 +66,7 @@ impl<'a> Assembler<'a> {
 
         for (addr, name) in &to_replace {
             if let Some(value) = symbol_map.get(name) {
-                instructions[*addr as usize] = *value;
+                instructions[*addr as usize] = *value as u32;
             }
         }
 
