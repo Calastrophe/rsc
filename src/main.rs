@@ -1,10 +1,8 @@
-pub mod assembler;
 pub mod emulator;
-pub mod lexer;
-use assembler::Assembler;
+pub mod parser;
 use clap::{Parser, Subcommand};
 use emulator::{Emulator, Memory};
-use lexer::Lexer;
+use parser::Assembler;
 
 #[derive(Parser)]
 #[command(author="Calastrophe", version, about, long_about = None)]
@@ -28,17 +26,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     match cli.command {
         Command::Run { input } => {
             let input = std::fs::read_to_string(input)?;
-            let tokens = Lexer::tokenize(&input);
-            let assembler = Assembler::assemble(tokens);
-            let memory = Memory::new(&assembler.instructions);
+            let (instructions, assembler) = Assembler::parse(&input);
+            let memory = Memory::new(&instructions);
             let mut emulator = Emulator::new(memory);
             emulator.start();
         }
         Command::Assemble { input, output } => {
             let input = std::fs::read_to_string(input)?;
-            let tokens = Lexer::tokenize(&input);
-            let assembler = Assembler::assemble(tokens);
-            assembler.as_logisim(&output)?;
+            todo!()
         }
     }
     Ok(())

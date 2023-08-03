@@ -1,3 +1,2 @@
-pub mod assembler;
 pub mod emulator;
-pub mod lexer;
+pub mod parser;
