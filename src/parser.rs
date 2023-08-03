@@ -9,6 +9,7 @@ use nom::{
     sequence::{pair, terminated, tuple},
     IResult,
 };
+use std::io::Write;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy)]
@@ -75,8 +76,13 @@ impl<'a> Assembler<'a> {
         }
     }
 
-    pub fn as_logisim(i: &'a str, o: &str) -> Result<(), Box<dyn std::error::Error>> {
-        todo!()
+    pub fn as_logisim(&self, o: &str) -> std::io::Result<()> {
+        let mut file = std::fs::File::create(o)?;
+        writeln!(file, "v2.0 raw")?;
+        for instruction in &self.instructions {
+            writeln!(file, "{}", format!("{:08X}", instruction))?;
+        }
+        Ok(())
     }
 }
 

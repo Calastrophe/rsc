@@ -33,7 +33,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Command::Assemble { input, output } => {
             let input = std::fs::read_to_string(input)?;
-            todo!()
+            let assembler = Assembler::parse(&input);
+            assembler.as_logisim(&output)?;
         }
     }
     Ok(())
