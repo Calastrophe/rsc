@@ -1,8 +1,16 @@
 use std::collections::HashMap;
 use thiserror::Error;
 
+
+#[derive(Error, Debug)]
+pub enum EmulatorErr {
+    #[error("Failure to retrieve specified breakpoint")]
+    BreakpointRetrievalFailure,
+}
+
+
 /// All registers in the RSC architecture.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Register {
     S,
     Z,
@@ -36,37 +44,6 @@ pub enum Instruction {
     NOT,
 }
 
-#[derive(Error, Debug)]
-pub enum EmulatorErr {
-    #[error("An invalid instruction `{0}` was parsed")]
-    TranslationError(String),
-}
-
-impl std::str::FromStr for Instruction {
-    type Err = EmulatorErr;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "HALT" => Ok(Instruction::HALT),
-            "LDAC" => Ok(Instruction::LDAC),
-            "STAC" => Ok(Instruction::STAC),
-            "MVAC" => Ok(Instruction::MVAC),
-            "MOVR" => Ok(Instruction::MOVR),
-            "JMP" => Ok(Instruction::JMP),
-            "JMPZ" => Ok(Instruction::JMPZ),
-            "OUT" => Ok(Instruction::OUT),
-            "SUB" => Ok(Instruction::SUB),
-            "ADD" => Ok(Instruction::ADD),
-            "INC" => Ok(Instruction::INC),
-            "CLAC" => Ok(Instruction::CLAC),
-            "AND" => Ok(Instruction::AND),
-            "OR" => Ok(Instruction::OR),
-            "ASHR" => Ok(Instruction::ASHR),
-            "NOT" => Ok(Instruction::NOT),
-            _ => Err(EmulatorErr::TranslationError(s.to_owned())),
-        }
-    }
-}
-
 impl From<u32> for Instruction {
     fn from(value: u32) -> Self {
         match value {
@@ -91,40 +68,49 @@ impl From<u32> for Instruction {
     }
 }
 
-pub struct Registers([u32; 9]);
+pub struct Registers {
+    registers: [u32; 9],
+    engine: TimelessEngine<(usize, u32)>,
+}
 
 impl Registers {
     pub fn new() -> Self {
-        Registers([0; 9])
+        Registers{ registers: [0; 9], engine: TimelessEngine::new() }
     }
 
     /// Retrieves the given registers current value.
     #[inline(always)]
     pub fn get(&self, reg: Register) -> u32 {
-        self.0[reg as usize]
+        self.registers[reg as usize]
     }
 
     /// Sets the registers content to the passed value.
     #[inline(always)]
     pub fn set(&mut self, reg: Register, val: u32) {
-        self.0[reg as usize] = val
-    }
-
-    /// Retrieves a mutuable reference to a register for easy manipulation.
-    #[inline(always)]
-    pub fn get_mut(&mut self, reg: Register) -> &mut u32 {
-        &mut self.0[reg as usize]
+        self.engine.add_change((reg as usize, self.registers[reg as usize]));
+        self.registers[reg as usize] = val
     }
 
     /// Transfers the source register contents to the destination register.
     #[inline(always)]
     pub fn transfer(&mut self, src: Register, dest: Register) {
-        self.0[dest as usize] = self.0[src as usize]
+        self.engine.add_change((dest as usize, self.registers[dest as usize]));
+        self.registers[dest as usize] = self.registers[src as usize]
+    }
+
+    fn revert(&mut self) {
+        if let Some((_, changes)) = self.engine.step_backwards() {
+            for (reg, val) in changes {
+                self.registers[reg] = val
+            }
+        }
     }
 }
 
-#[derive(Debug)]
-pub struct Memory(HashMap<u32, u32>);
+pub struct Memory {
+    memory: HashMap<u32, u32>,
+    engine: TimelessEngine<(u32, u32)>,
+}
 
 impl Memory {
     pub fn new(instructions: &[u32]) -> Self {
@@ -133,13 +119,13 @@ impl Memory {
             let count = count as u32;
             memory.insert(count, *instruction);
         }
-        Memory(memory)
+        Memory{ memory, engine: TimelessEngine::new() }
     }
 
     /// Retrieves the value at the given address.
     fn get(&self, address: u32) -> u32 {
         // Avoid the needless insertion, just keep returning zero until its set.
-        match self.0.get(&address) {
+        match self.memory.get(&address) {
             Some(v) => *v,
             None => 0,
         }
@@ -147,9 +133,45 @@ impl Memory {
 
     /// Sets the value at the given address.
     fn set(&mut self, address: u32, val: u32) {
-        *self.0.entry(address).or_default() = val
+        self.engine.add_change((address, val));
+        *self.memory.entry(address).or_default() = val
+    }
+    
+    fn revert(&mut self) {
+        if let Some((_, changes)) = self.engine.step_backwards() {
+            for (addr, val) in changes {
+                *self.memory.entry(addr).or_default() = val
+            }
+        }
     }
 }
+
+
+pub struct TimelessEngine<T> {
+    step_counter: usize,
+    changes: HashMap<usize, Vec<T>>,
+}
+
+impl<T> TimelessEngine<T> {
+    pub fn new() -> Self {
+        TimelessEngine { step_counter: 0, changes: HashMap::new() }
+    }
+
+    pub fn step_forward(&mut self) {
+        self.step_counter += 1
+    }
+
+    pub fn step_backwards(&mut self) -> Option<(usize, Vec<T>)>{
+        self.step_counter -= 1;
+        self.changes.remove_entry(&self.step_counter)
+    }
+
+    pub fn add_change(&mut self, c: T) {
+       self.changes.entry(self.step_counter).or_insert(Vec::new()).push(c);
+    }
+
+}
+
 
 pub struct Emulator {
     registers: Registers,
@@ -182,7 +204,14 @@ impl Emulator {
     pub fn cycle(&mut self) {
         self.check_z();
         let instruction = self.fetch();
-        self.execute(instruction)
+        self.execute(instruction);
+        self.registers.engine.step_forward();
+        self.memory.engine.step_forward();
+    }
+
+    pub fn step_back(&mut self) {
+        self.registers.revert();
+        self.memory.revert();
     }
 
     fn execute(&mut self, i: Instruction) {
@@ -212,7 +241,6 @@ impl Emulator {
             .set(Register::DR, self.get_memory_from_register(Register::AR));
         self.inc_pc();
         self.registers.transfer(Register::DR, Register::IR);
-        self.registers.transfer(Register::PC, Register::AR);
         self.registers.get(Register::IR).into()
     }
 
@@ -270,39 +298,43 @@ impl Emulator {
     }
 
     fn sub(&mut self) {
-        *self.registers.get_mut(Register::ACC) -= self.registers.get(Register::R);
+        let new_val = self.registers.get(Register::ACC) - self.registers.get(Register::R);
+        self.registers.set(Register::ACC, new_val)
     }
 
     fn add(&mut self) {
-        *self.registers.get_mut(Register::ACC) += self.registers.get(Register::R);
+        let new_val = self.registers.get(Register::ACC) + self.registers.get(Register::R);
+        self.registers.set(Register::ACC, new_val)
     }
 
     fn inc(&mut self) {
-        *self.registers.get_mut(Register::ACC) += 1;
+        self.registers.set(Register::ACC, self.registers.get(Register::ACC) + 1)
     }
 
     fn clac(&mut self) {
-        *self.registers.get_mut(Register::ACC) = 0;
+        self.registers.set(Register::ACC, 0)
     }
 
     fn and(&mut self) {
-        *self.registers.get_mut(Register::ACC) &= self.registers.get(Register::R);
+        let new_val = self.registers.get(Register::ACC) & self.registers.get(Register::R);
+        self.registers.set(Register::ACC, new_val)
     }
 
     fn or(&mut self) {
-        *self.registers.get_mut(Register::ACC) |= self.registers.get(Register::R);
+        let new_val = self.registers.get(Register::ACC) | self.registers.get(Register::R);
+        self.registers.set(Register::ACC, new_val)
     }
 
     fn ashr(&mut self) {
-        *self.registers.get_mut(Register::ACC) >>= 1;
+        self.registers.set(Register::ACC, self.registers.get(Register::ACC) >> 1)
     }
 
     fn not(&mut self) {
-        *self.registers.get_mut(Register::ACC) = !self.registers.get(Register::ACC)
+        self.registers.set(Register::ACC, !self.registers.get(Register::ACC))
     }
 
     fn inc_pc(&mut self) {
-        *self.registers.get_mut(Register::PC) += 1;
+        self.registers.set(Register::PC, self.registers.get(Register::PC) + 1)
     }
 
     fn get_memory_from_register(&self, r: Register) -> u32 {
@@ -312,12 +344,11 @@ impl Emulator {
 
     fn check_z(&mut self) -> bool {
         let acc = self.registers.get(Register::ACC);
-        let z = self.registers.get_mut(Register::Z);
         if acc == 0 {
-            *z = 1;
+            self.registers.set(Register::Z, 1);
             true
         } else {
-            *z = 0;
+            self.registers.set(Register::Z, 0);
             false
         }
     }
