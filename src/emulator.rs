@@ -162,7 +162,9 @@ impl<T> TimelessEngine<T> {
     }
 
     pub fn step_backwards(&mut self) -> Option<(usize, Vec<T>)>{
-        self.step_counter -= 1;
+        if self.step_counter > 0 {
+            self.step_counter -= 1;
+        }
         self.changes.remove_entry(&self.step_counter)
     }
 
