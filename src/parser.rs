@@ -1,4 +1,4 @@
-use crate::emulator::Instruction;
+use crate::util::types::Instruction;
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_until},

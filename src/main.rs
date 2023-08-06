@@ -1,41 +1,37 @@
 pub mod emulator;
 pub mod parser;
-use clap::{Parser, Subcommand};
-use emulator::{Emulator, Memory};
-use parser::Assembler;
+mod util;
+mod app;
 
-#[derive(Parser)]
-#[command(author="Calastrophe", version, about, long_about = None)]
-#[command(propagate_version = true)]
-struct Cli {
-    #[command(subcommand)]
-    command: Command,
+// When compiling natively:
+#[cfg(not(target_arch = "wasm32"))]
+fn main() -> eframe::Result<()> {
+    env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
+
+    let native_options = eframe::NativeOptions::default();
+    eframe::run_native(
+        "rsc emulator",
+        native_options,
+        Box::new(|cc| Box::new(app::EmulatorGUI::new(cc))),
+    )
 }
 
-#[derive(Subcommand)]
-enum Command {
-    /// Emulates a given input file to the end of computation.
-    Run { input: String },
-    /// Assembles a given input file into Logisim compatiable format named with the provided output name.
-    Assemble { input: String, output: String },
-}
+// When compiling to web using trunk:
+#[cfg(target_arch = "wasm32")]
+fn main() {
+    // Redirect `log` message to `console.log` and friends:
+    eframe::WebLogger::init(log::LevelFilter::Debug).ok();
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let cli = Cli::parse();
+    let web_options = eframe::WebOptions::default();
 
-    match cli.command {
-        Command::Run { input } => {
-            let input = std::fs::read_to_string(input)?;
-            let assembler = Assembler::parse(&input);
-            let memory = Memory::new(&assembler.instructions);
-            let mut emulator = Emulator::new(memory);
-            emulator.start();
-        }
-        Command::Assemble { input, output } => {
-            let input = std::fs::read_to_string(input)?;
-            let assembler = Assembler::parse(&input);
-            assembler.as_logisim(&output)?;
-        }
-    }
-    Ok(())
+    wasm_bindgen_futures::spawn_local(async {
+        eframe::WebRunner::new()
+            .start(
+                "rsc_emulator", // hardcode it
+                web_options,
+                Box::new(|cc| Box::new(app::EmulatorGUI::new(cc))),
+            )
+            .await
+            .expect("failed to start eframe");
+    });
 }
