@@ -23,20 +23,22 @@ pub enum Token<'a> {
     Comment,
 }
 
-pub struct Assembler<'a> {
+pub struct Assembler {
+    // Potentially refactor out this Vec
     pub instructions: Vec<u32>,
-    pub symbol_map: HashMap<&'a str, u32>,
-    pub replaced_instructions: HashMap<usize, &'a str>,
+    // Chose to use strings because I wanted to avoid solving self-referential data structures w/ borrow checker
+    pub symbol_map: HashMap<String, u32>,
+    pub replaced_instructions: HashMap<usize, String>,
 }
 
-impl<'a> Assembler<'a> {
-    pub fn parse(input: &'a str) -> Self {
-        // TODO: Fix this error handling...
-        let (_, tokens) = parse(input).expect("There was an issue parsing your file.");
+impl Assembler {
 
+    pub fn parse<'a>(input: &'a str) -> Self {
+        let (_, tokens) = parse(input).expect("failed to parse"); // Fix error handling
+        let mut instructions = Vec::new();
         let mut symbol_map = HashMap::new();
         let mut to_replace = HashMap::new();
-        let mut instructions = Vec::new();
+
         for token in tokens {
             // Could potentially mess up parsing if there are more than u32::MAX instructions.
             let current_address = instructions.len() as u32;
@@ -47,17 +49,17 @@ impl<'a> Assembler<'a> {
                 Token::KeywordOperand(i, op) => {
                     instructions.extend([i as u32, 0]);
                     let current_address = instructions.len();
-                    to_replace.insert(current_address - 1, op);
+                    to_replace.insert(current_address - 1, op.to_owned());
                 }
                 Token::Label(label) => {
-                    symbol_map.insert(label, current_address);
+                    symbol_map.insert(label.to_owned(), current_address);
                 }
                 Token::LabelRef(name) | Token::VariableRef(name) => {
-                    to_replace.insert(current_address as usize, name);
+                    to_replace.insert(current_address as usize, name.to_owned());
                     instructions.push(0);
                 }
                 Token::Variable(var, value) => {
-                    symbol_map.insert(var, current_address);
+                    symbol_map.insert(var.to_owned(), current_address);
                     instructions.push(value);
                 }
                 _ => {}
@@ -70,11 +72,7 @@ impl<'a> Assembler<'a> {
             }
         }
 
-        Assembler {
-            instructions,
-            symbol_map,
-            replaced_instructions: to_replace,
-        }
+        Assembler { instructions, symbol_map, replaced_instructions: to_replace }
     }
 
     pub fn as_logisim(&self, o: &str) -> std::io::Result<()> {
@@ -85,6 +83,7 @@ impl<'a> Assembler<'a> {
         }
         Ok(())
     }
+
 }
 
 fn parse<'a>(input: &'a str) -> IResult<&str, Vec<Token>> {

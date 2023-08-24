@@ -24,6 +24,26 @@ pub mod types {
         R,
     }
 
+    impl Register {
+        pub fn as_str(self) -> &'static str {
+            match self {
+                Self::Z => "Z",
+                Self::S => "S",
+                Self::IR => "IR",
+                Self::AR => "AR",
+                Self::DR => "DR",
+                Self::PC => "PC",
+                Self::OUTR => "OUTR",
+                Self::ACC => "ACC",
+                Self::R => "R",
+            }
+        }
+
+        pub fn iter() -> std::slice::Iter<'static, Register> {
+            [Register::S, Register::Z, Register::IR, Register::AR, Register::DR, Register::PC, Register::OUTR, Register::ACC, Register::R].iter()
+        }
+    }
+
     #[derive(Debug, Clone, Copy)]
     /// All instructions in the RSC architecture.
     pub enum Instruction {
@@ -102,7 +122,7 @@ impl<T> TimelessEngine<T> {
 }
 
 pub struct Registers {
-    registers: [u32; 9],
+    pub registers: [u32; 9],
     pub engine: TimelessEngine<(usize, u32)>,
 }
 
@@ -112,20 +132,17 @@ impl Registers {
     }
 
     /// Retrieves the given registers current value.
-    #[inline(always)]
     pub fn get(&self, reg: Register) -> u32 {
         self.registers[reg as usize]
     }
 
     /// Sets the registers content to the passed value.
-    #[inline(always)]
     pub fn set(&mut self, reg: Register, val: u32) {
         self.engine.add_change((reg as usize, self.registers[reg as usize]));
         self.registers[reg as usize] = val
     }
 
     /// Transfers the source register contents to the destination register.
-    #[inline(always)]
     pub fn transfer(&mut self, src: Register, dest: Register) {
         self.engine.add_change((dest as usize, self.registers[dest as usize]));
         self.registers[dest as usize] = self.registers[src as usize]
@@ -133,15 +150,15 @@ impl Registers {
 
     pub fn revert(&mut self) {
         if let Some((_, changes)) = self.engine.step_backwards() {
-            for (reg, val) in changes {
-                self.registers[reg] = val
+            for (reg, val) in changes.iter().rev() {
+                self.registers[*reg] = *val
             }
         }
     }
 }
 
 pub struct Memory {
-    memory: HashMap<u32, u32>,
+    pub underlying: HashMap<u32, u32>,
     pub engine: TimelessEngine<(u32, u32)>,
 }
 
@@ -149,16 +166,17 @@ impl Memory {
     pub fn new(instructions: &[u32]) -> Self {
         let mut memory = HashMap::new();
         for (count, instruction) in instructions.into_iter().enumerate() {
+            println!("{} : {}", count, *instruction);
             let count = count as u32;
             memory.insert(count, *instruction);
         }
-        Memory{ memory, engine: TimelessEngine::new() }
+        Memory{ underlying: memory, engine: TimelessEngine::new() }
     }
 
     /// Retrieves the value at the given address.
     pub fn get(&self, address: u32) -> u32 {
         // Avoid the needless insertion, just keep returning zero until its set.
-        match self.memory.get(&address) {
+        match self.underlying.get(&address) {
             Some(v) => *v,
             None => 0,
         }
@@ -167,13 +185,13 @@ impl Memory {
     /// Sets the value at the given address.
     pub fn set(&mut self, address: u32, val: u32) {
         self.engine.add_change((address, val));
-        *self.memory.entry(address).or_default() = val
+        *self.underlying.entry(address).or_default() = val
     }
     
     pub fn revert(&mut self) {
         if let Some((_, changes)) = self.engine.step_backwards() {
-            for (addr, val) in changes {
-                *self.memory.entry(addr).or_default() = val
+            for (addr, val) in changes.iter().rev() {
+                *self.underlying.entry(*addr).or_default() = *val
             }
         }
     }

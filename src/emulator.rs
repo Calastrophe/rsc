@@ -2,15 +2,15 @@ use crate::util::{Memory, Registers, types::{Instruction, Register, EmulatorErr}
 use std::collections::HashMap;
 use crate::parser::Assembler;
 
-pub struct Emulator<'a> {
-    assembler: Assembler<'a>,
-    registers: Registers,
-    memory: Memory,
+pub struct Emulator {
+    assembler: Assembler,
+    pub registers: Registers,
+    pub memory: Memory,
     breakpoints: HashMap<u32, bool>,
 }
 
-impl<'a> Emulator<'a> {
-    pub fn new(assembler: Assembler<'a>, memory: Memory) -> Self {
+impl Emulator {
+    pub fn new(assembler: Assembler, memory: Memory) -> Self {
         Emulator {
             assembler,
             registers: Registers::new(),
@@ -45,19 +45,18 @@ impl<'a> Emulator<'a> {
     }
     
     pub fn stepi(&mut self, steps: usize) {
-        while !self.halted() && !self.query(self.registers.get(Register::PC)) {
-            for step in 0..steps {
+        for _ in 0..steps {
+            if !self.halted() && !self.query(self.registers.get(Register::PC)) {
                 self.cycle()
             }
         }
     }
 
     pub fn backi(&mut self, steps: usize) {
-        for step in 0..steps {
+        for _ in 0..steps {
             self.step_back()
         }
     }
-
 
     fn cycle(&mut self) {
         self.check_z();
@@ -99,6 +98,7 @@ impl<'a> Emulator<'a> {
             .set(Register::DR, self.get_memory_from_register(Register::AR));
         self.inc_pc();
         self.registers.transfer(Register::DR, Register::IR);
+        self.registers.transfer(Register::PC, Register::AR);
         self.registers.get(Register::IR).into()
     }
 
@@ -139,9 +139,7 @@ impl<'a> Emulator<'a> {
 
     fn jmp(&mut self) {
         let new_pc = self.get_memory_from_register(Register::AR);
-        // This is only for emulation purposes, it is redundant here.
         self.registers.set(Register::DR, new_pc);
-
         self.registers.set(Register::PC, new_pc);
     }
 

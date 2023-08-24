@@ -1,29 +1,21 @@
 
-// For the graphical part of the application with egui
-use crate::emulator::Emulator;
+use crate::{emulator::Emulator, util::{types::Register, Memory}, file::FileDialog, parser::Assembler};
 
 #[derive(Default)]
-pub struct EmulatorGUI<'a> {
-    input: String, // The RSC code which is piped in through the editor built in the GUI.
-    emulator: Option<Emulator<'a>>,
-    // memory view table of emulator
-    // register state view table
+pub struct GUI {
+    fd: FileDialog,
+    file_contents: String,
+    emulator: Option<Emulator>,
 }
 
-impl<'a> EmulatorGUI<'a> {
+impl GUI {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         Default::default()
     }
 }
 
-impl<'a> eframe::App for EmulatorGUI<'a> {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        let Self { input, emulator } = self;
-
-        // // Examples of how to create different panels and windows.
-        // // Pick whichever suits you.
-        // // Tip: a good default choice is to just keep the `CentralPanel`.
-        // // For inspiration and more examples, go to https://emilk.github.io/egui
+impl eframe::App for GUI {
+fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
 
         // #[cfg(not(target_arch = "wasm32"))] // no File->Quit on web pages!
         // egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
@@ -37,53 +29,48 @@ impl<'a> eframe::App for EmulatorGUI<'a> {
         //     });
         // });
 
-        // egui::SidePanel::left("side_panel").show(ctx, |ui| {
-        //     ui.heading("Side Panel");
+        egui::SidePanel::right("side_panel").show(ctx, |ui| {
+            ui.heading("Registers");
+            
+            for register in Register::iter() {
+                if let Some(emulator) = &self.emulator {
+                    ui.label(format!("{} : {}", register.as_str(), emulator.registers.get(*register)));
+                } else {
+                    ui.label(format!("{} : {}", register.as_str(), 0));
+                }
+            }    
+            if let Some(emulator) = &mut self.emulator {
+                if ui.button("Step forward").clicked() {
+                    emulator.stepi(1)
+                }
+                if ui.button("Step backward").clicked() {
+                    emulator.backi(1)
+                }
+            } else {
+                if ui.button("Open file").clicked() {
+                    self.fd.open()
+                }
+            }
+        });
 
-        //     ui.horizontal(|ui| {
-        //         ui.label("Write something: ");
-        //         ui.text_edit_singleline(label);
-        //     });
+        egui::CentralPanel::default().show(ctx, |ui| {
 
-        //     ui.add(egui::Slider::new(value, 0.0..=10.0).text("value"));
-        //     if ui.button("Increment").clicked() {
-        //         *value += 1.0;
-        //     }
+        });
 
-        //     ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
-        //         ui.horizontal(|ui| {
-        //             ui.spacing_mut().item_spacing.x = 0.0;
-        //             ui.label("powered by ");
-        //             ui.hyperlink_to("egui", "https://github.com/emilk/egui");
-        //             ui.label(" and ");
-        //             ui.hyperlink_to(
-        //                 "eframe",
-        //                 "https://github.com/emilk/egui/tree/master/crates/eframe",
-        //             );
-        //             ui.label(".");
-        //         });
-        //     });
-        // });
+        if let Some(file_contents) = self.fd.get() {
+            self.file_contents = file_contents;
+            let assembler = Assembler::parse(&self.file_contents);
+            let memory = Memory::new(&assembler.instructions);
+            self.emulator = Some(Emulator::new(assembler, memory));
+        }
 
-        // egui::CentralPanel::default().show(ctx, |ui| {
-        //     // The central panel the region left after adding TopPanel's and SidePanel's
-
-        //     ui.heading("eframe template");
-        //     ui.hyperlink("https://github.com/emilk/eframe_template");
-        //     ui.add(egui::github_link_file!(
-        //         "https://github.com/emilk/eframe_template/blob/master/",
-        //         "Source code."
-        //     ));
-        //     egui::warn_if_debug_build(ui);
-        // });
-
-        // if false {
-        //     egui::Window::new("Window").show(ctx, |ui| {
-        //         ui.label("Windows can be moved by dragging them.");
-        //         ui.label("They are automatically sized based on contents.");
-        //         ui.label("You can turn on resizing and scrolling if you like.");
-        //         ui.label("You would normally choose either panels OR windows.");
-        //     });
-        // }
     }
 }
+
+
+// There should be a context menu where you can open and load a file.
+
+// The loading of the file will parse the tokens and determine if there is a parsing error.
+
+// It will populate an optional memory view table, that you can show with a click of a button.
+

@@ -1,5 +1,6 @@
 pub mod emulator;
 pub mod parser;
+mod file;
 mod util;
 mod app;
 
@@ -12,7 +13,7 @@ fn main() -> eframe::Result<()> {
     eframe::run_native(
         "rsc emulator",
         native_options,
-        Box::new(|cc| Box::new(app::EmulatorGUI::new(cc))),
+        Box::new(|cc| Box::new(app::GUI::new(cc))),
     )
 }
 
@@ -29,7 +30,7 @@ fn main() {
             .start(
                 "rsc_emulator", // hardcode it
                 web_options,
-                Box::new(|cc| Box::new(app::EmulatorGUI::new(cc))),
+                Box::new(|cc| Box::new(app::GUI::new(cc))),
             )
             .await
             .expect("failed to start eframe");
