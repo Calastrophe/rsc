@@ -166,7 +166,6 @@ impl Memory {
     pub fn new(instructions: &[u32]) -> Self {
         let mut memory = HashMap::new();
         for (count, instruction) in instructions.into_iter().enumerate() {
-            println!("{} : {}", count, *instruction);
             let count = count as u32;
             memory.insert(count, *instruction);
         }

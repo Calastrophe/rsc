@@ -21,43 +21,58 @@ impl Emulator {
 
     /// Starts the emulation of the given instructions to the emulator.
     pub fn start(&mut self) {
-        while !self.halted() && !self.query(self.registers.get(Register::PC)) {
+        while !self.should_stop() {
             self.cycle();
         }
     }
 
+    /// Sets an enabled breakpoint at the given address
     pub fn set_breakpoint(&mut self, address: u32) {
         self.breakpoints.insert(address, true);
     }
 
-    pub fn query(&mut self, address: u32) -> bool {
+    /// Determines if the given address is a breakpoint and if its enabled
+    pub fn query(&self, address: u32) -> bool {
         self.breakpoints.iter().any(|(k,v)| *k == address && *v == true)
     }
 
+    /// Enables a given breakpoint, returns an error if breakpoint does not exist.
     pub fn enable(&mut self, address: u32) -> Result<(), EmulatorErr>  {
         *self.breakpoints.get_mut(&address).ok_or(EmulatorErr::BreakpointRetrievalFailure)? = true;
         Ok(())
     }
 
+    /// Disables a given breakpoint, returns an error if breakpoint does not exist.
     pub fn disable(&mut self, address: u32) -> Result<(), EmulatorErr> {
         *self.breakpoints.get_mut(&address).ok_or(EmulatorErr::BreakpointRetrievalFailure)? = false;
         Ok(())
     }
+
+    /// Steps over a breakpoint, this button will only show when breakpoint has been hit.
+    pub fn step_over(&mut self) {
+        if !self.halted() {
+            self.cycle()
+        }
+    }
     
+    /// Steps forward with a given amount of steps, will stop progresing when S == 1 or a breakpoint is hit.
     pub fn stepi(&mut self, steps: usize) {
         for _ in 0..steps {
-            if !self.halted() && !self.query(self.registers.get(Register::PC)) {
+            if !self.should_stop() {
                 self.cycle()
             }
         }
     }
 
+    /// Steps backward with a given amount of steps - will go all the way back to the beginning of execution.
     pub fn backi(&mut self, steps: usize) {
+        // There are checks when stepping back that we can't go further than our beginning step count, 0.
         for _ in 0..steps {
             self.step_back()
         }
     }
 
+    // One cycle of execution
     fn cycle(&mut self) {
         self.check_z();
         let instruction = self.fetch();
@@ -101,8 +116,6 @@ impl Emulator {
         self.registers.transfer(Register::PC, Register::AR);
         self.registers.get(Register::IR).into()
     }
-
-    // All the implementations of the various instructions are below...
 
     fn halt(&mut self) {
         self.registers.set(Register::S, 1);
@@ -213,5 +226,9 @@ impl Emulator {
 
     fn halted(&self) -> bool {
         self.registers.get(Register::S) == 1
+    }
+
+    fn should_stop(&self) -> bool {
+        self.halted() || self.query(self.registers.get(Register::PC))
     }
 }

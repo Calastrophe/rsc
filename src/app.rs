@@ -5,57 +5,56 @@ use crate::{emulator::Emulator, util::{types::Register, Memory}, file::FileDialo
 pub struct GUI {
     fd: FileDialog,
     file_contents: String,
+    step_scale: usize,
     emulator: Option<Emulator>,
 }
 
 impl GUI {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        Default::default()
+        GUI { step_scale: 1, ..Default::default() }
     }
 }
 
 impl eframe::App for GUI {
 fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
 
-        // #[cfg(not(target_arch = "wasm32"))] // no File->Quit on web pages!
-        // egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
-        //     // The top panel is often a good place for a menu bar:
-        //     egui::menu::bar(ui, |ui| {
-        //         ui.menu_button("File", |ui| {
-        //             if ui.button("Quit").clicked() {
-        //                 _frame.close();
-        //             }
-        //         });
-        //     });
-        // });
-
-        egui::SidePanel::right("side_panel").show(ctx, |ui| {
-            ui.heading("Registers");
+        egui::CentralPanel::default().show(ctx, |ui| {
+            egui::menu::bar(ui, |ui| {
+                ui.menu_button("File", |ui| {
+                    if ui.button("Open file").clicked() {
+                        self.fd.open()
+                    }
+                    #[cfg(not(target_arch = "wasm32"))]
+                    if ui.button("Quit").clicked() {
+                        _frame.close()
+                    }
+                })
+            });
             
-            for register in Register::iter() {
-                if let Some(emulator) = &self.emulator {
-                    ui.label(format!("{} : {}", register.as_str(), emulator.registers.get(*register)));
-                } else {
-                    ui.label(format!("{} : {}", register.as_str(), 0));
-                }
-            }    
             if let Some(emulator) = &mut self.emulator {
+                ui.heading("Registers");
+                for register in Register::iter() {
+                    ui.label(format!("{} : {}", register.as_str(), emulator.registers.get(*register)));
+                }
+                if ui.button("Start").clicked() {
+                    emulator.start()
+                }
                 if ui.button("Step forward").clicked() {
-                    emulator.stepi(1)
+                    emulator.stepi(self.step_scale)
                 }
                 if ui.button("Step backward").clicked() {
-                    emulator.backi(1)
+                    emulator.backi(self.step_scale)
                 }
-            } else {
-                if ui.button("Open file").clicked() {
-                    self.fd.open()
+                // Temporary
+                emulator.set_breakpoint(42);
+                if emulator.query(emulator.registers.get(Register::PC)) {
+                    if ui.button("Step over").clicked() {
+                        emulator.step_over()
+                    }
                 }
             }
         });
 
-        egui::CentralPanel::default().show(ctx, |ui| {
-
-        });
 
         if let Some(file_contents) = self.fd.get() {
             self.file_contents = file_contents;
