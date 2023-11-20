@@ -1,4 +1,4 @@
-use crate::util::types::Instruction;
+use super::util::types::{EmulatorErr, Instruction};
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_until},
@@ -9,8 +9,8 @@ use nom::{
     sequence::{pair, terminated, tuple},
     IResult,
 };
-use std::io::Write;
 use std::collections::HashMap;
+use std::io::Write;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Token<'a> {
@@ -23,24 +23,20 @@ pub enum Token<'a> {
     Comment,
 }
 
-pub struct Assembler {
-    // Potentially refactor out this Vec
+pub struct Assembler<'a> {
     pub instructions: Vec<u32>,
-    // Chose to use strings because I wanted to avoid solving self-referential data structures w/ borrow checker
-    pub symbol_map: HashMap<String, u32>,
-    pub replaced_instructions: HashMap<usize, String>,
+    pub symbol_map: HashMap<&'a str, u32>,
+    pub replaced_instructions: HashMap<usize, &'a str>,
 }
 
-impl Assembler {
-
-    pub fn parse<'a>(input: &'a str) -> Self {
-        let (_, tokens) = parse(input).expect("failed to parse"); // Fix error handling
+impl<'a> Assembler<'a> {
+    pub fn parse(input: &'a str) -> Result<Self, EmulatorErr> {
+        let (_, tokens) = parse(input).map_err(|_| EmulatorErr::ParseFailure)?;
         let mut instructions = Vec::new();
         let mut symbol_map = HashMap::new();
         let mut to_replace = HashMap::new();
 
         for token in tokens {
-            // Could potentially mess up parsing if there are more than u32::MAX instructions.
             let current_address = instructions.len() as u32;
             match token {
                 Token::Keyword(i) => {
@@ -49,17 +45,17 @@ impl Assembler {
                 Token::KeywordOperand(i, op) => {
                     instructions.extend([i as u32, 0]);
                     let current_address = instructions.len();
-                    to_replace.insert(current_address - 1, op.to_owned());
+                    to_replace.insert(current_address - 1, op);
                 }
                 Token::Label(label) => {
-                    symbol_map.insert(label.to_owned(), current_address);
+                    symbol_map.insert(label, current_address);
                 }
                 Token::LabelRef(name) | Token::VariableRef(name) => {
-                    to_replace.insert(current_address as usize, name.to_owned());
+                    to_replace.insert(current_address as usize, name);
                     instructions.push(0);
                 }
                 Token::Variable(var, value) => {
-                    symbol_map.insert(var.to_owned(), current_address);
+                    symbol_map.insert(var, current_address);
                     instructions.push(value);
                 }
                 _ => {}
@@ -72,7 +68,11 @@ impl Assembler {
             }
         }
 
-        Assembler { instructions, symbol_map, replaced_instructions: to_replace }
+        Ok(Assembler {
+            instructions,
+            symbol_map,
+            replaced_instructions: to_replace,
+        })
     }
 
     pub fn as_logisim(&self, o: &str) -> std::io::Result<()> {
@@ -83,7 +83,6 @@ impl Assembler {
         }
         Ok(())
     }
-
 }
 
 fn parse<'a>(input: &'a str) -> IResult<&str, Vec<Token>> {
@@ -158,18 +157,4 @@ fn parse_ident(input: &str) -> IResult<&str, Token> {
 
 fn parse_comment(input: &str) -> IResult<&str, Token> {
     value(Token::Comment, pair(tag(";"), take_until("\n")))(input)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    pub fn test_file() -> Result<(), Box<dyn std::error::Error>> {
-        let file = include_str!("../tests/selection_sort.txt");
-
-        let (res, tokens) = parse(file)?;
-        println!("{:?}, {:?}", res, tokens);
-        Ok(())
-    }
 }

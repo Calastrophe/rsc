@@ -1,16 +1,22 @@
-use crate::util::{Memory, Registers, types::{Instruction, Register, EmulatorErr}};
-use std::collections::HashMap;
-use crate::parser::Assembler;
+mod parser;
+mod util;
 
-pub struct Emulator {
-    assembler: Assembler,
+use parser::Assembler;
+use std::collections::HashMap;
+use util::{
+    types::{Instruction, Register},
+    Memory, Registers,
+};
+
+pub struct Emulator<'a> {
+    assembler: Assembler<'a>,
     pub registers: Registers,
     pub memory: Memory,
     breakpoints: HashMap<u32, bool>,
 }
 
-impl Emulator {
-    pub fn new(assembler: Assembler, memory: Memory) -> Self {
+impl<'a> Emulator<'a> {
+    pub fn new(assembler: Assembler<'a>, memory: Memory) -> Self {
         Emulator {
             assembler,
             registers: Registers::new(),
@@ -31,21 +37,30 @@ impl Emulator {
         self.breakpoints.insert(address, true);
     }
 
-    /// Determines if the given address is a breakpoint and if its enabled
+    /// Removes a breakpoint at a given address, returns if the removal acted on anything.
+    pub fn remove_breakpoint(&mut self, address: u32) -> bool {
+        self.breakpoints.remove(&address).is_some()
+    }
+
+    /// Returns if a given address is a breakpoint and is enabled
     pub fn query(&self, address: u32) -> bool {
-        self.breakpoints.iter().any(|(k,v)| *k == address && *v == true)
+        self.breakpoints.get(&address).is_some_and(|v| *v == true)
     }
 
-    /// Enables a given breakpoint, returns an error if breakpoint does not exist.
-    pub fn enable(&mut self, address: u32) -> Result<(), EmulatorErr>  {
-        *self.breakpoints.get_mut(&address).ok_or(EmulatorErr::BreakpointRetrievalFailure)? = true;
-        Ok(())
+    /// Enables a given breakpoint, returns false if the breakpoint does not exist.
+    pub fn enable(&mut self, address: u32) -> bool {
+        self.breakpoints.get_mut(&address).is_some_and(|v| {
+            *v = true;
+            true
+        })
     }
 
-    /// Disables a given breakpoint, returns an error if breakpoint does not exist.
-    pub fn disable(&mut self, address: u32) -> Result<(), EmulatorErr> {
-        *self.breakpoints.get_mut(&address).ok_or(EmulatorErr::BreakpointRetrievalFailure)? = false;
-        Ok(())
+    /// Disables a given breakpoint, returns false if the breakpoint does not exist.
+    pub fn disable(&mut self, address: u32) -> bool {
+        self.breakpoints.get_mut(&address).is_some_and(|v| {
+            *v = false;
+            true
+        })
     }
 
     /// Steps over a breakpoint, this button will only show when breakpoint has been hit.
@@ -54,7 +69,7 @@ impl Emulator {
             self.cycle()
         }
     }
-    
+
     /// Steps forward with a given amount of steps, will stop progresing when S == 1 or a breakpoint is hit.
     pub fn stepi(&mut self, steps: usize) {
         for _ in 0..steps {
@@ -179,7 +194,8 @@ impl Emulator {
     }
 
     fn inc(&mut self) {
-        self.registers.set(Register::ACC, self.registers.get(Register::ACC) + 1)
+        self.registers
+            .set(Register::ACC, self.registers.get(Register::ACC) + 1)
     }
 
     fn clac(&mut self) {
@@ -197,15 +213,18 @@ impl Emulator {
     }
 
     fn ashr(&mut self) {
-        self.registers.set(Register::ACC, self.registers.get(Register::ACC) >> 1)
+        self.registers
+            .set(Register::ACC, self.registers.get(Register::ACC) >> 1)
     }
 
     fn not(&mut self) {
-        self.registers.set(Register::ACC, !self.registers.get(Register::ACC))
+        self.registers
+            .set(Register::ACC, !self.registers.get(Register::ACC))
     }
 
     fn inc_pc(&mut self) {
-        self.registers.set(Register::PC, self.registers.get(Register::PC) + 1)
+        self.registers
+            .set(Register::PC, self.registers.get(Register::PC) + 1)
     }
 
     fn get_memory_from_register(&self, r: Register) -> u32 {

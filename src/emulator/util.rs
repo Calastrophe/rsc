@@ -5,10 +5,9 @@ pub mod types {
 
     #[derive(Error, Debug)]
     pub enum EmulatorErr {
-        #[error("Failure to retrieve specified breakpoint")]
-        BreakpointRetrievalFailure,
+        #[error("There was an error parsing the file")]
+        ParseFailure,
     }
-
 
     /// All registers in the RSC architecture.
     #[derive(Debug, Clone, Copy)]
@@ -40,7 +39,18 @@ pub mod types {
         }
 
         pub fn iter() -> std::slice::Iter<'static, Register> {
-            [Register::S, Register::Z, Register::IR, Register::AR, Register::DR, Register::PC, Register::OUTR, Register::ACC, Register::R].iter()
+            [
+                Register::S,
+                Register::Z,
+                Register::IR,
+                Register::AR,
+                Register::DR,
+                Register::PC,
+                Register::OUTR,
+                Register::ACC,
+                Register::R,
+            ]
+            .iter()
         }
     }
 
@@ -88,11 +98,9 @@ pub mod types {
             }
         }
     }
-
 }
 
 use types::Register;
-
 
 pub struct TimelessEngine<T> {
     step_counter: usize,
@@ -101,14 +109,17 @@ pub struct TimelessEngine<T> {
 
 impl<T> TimelessEngine<T> {
     pub fn new() -> Self {
-        TimelessEngine { step_counter: 0, changes: HashMap::new() }
+        TimelessEngine {
+            step_counter: 0,
+            changes: HashMap::new(),
+        }
     }
 
     pub fn step_forward(&mut self) {
         self.step_counter += 1
     }
 
-    pub fn step_backwards(&mut self) -> Option<(usize, Vec<T>)>{
+    pub fn step_backwards(&mut self) -> Option<(usize, Vec<T>)> {
         if self.step_counter > 0 {
             self.step_counter -= 1;
         }
@@ -116,9 +127,11 @@ impl<T> TimelessEngine<T> {
     }
 
     pub fn add_change(&mut self, c: T) {
-       self.changes.entry(self.step_counter).or_insert(Vec::new()).push(c);
+        self.changes
+            .entry(self.step_counter)
+            .or_insert(Vec::new())
+            .push(c);
     }
-
 }
 
 pub struct Registers {
@@ -128,7 +141,10 @@ pub struct Registers {
 
 impl Registers {
     pub fn new() -> Self {
-        Registers{ registers: [0; 9], engine: TimelessEngine::new() }
+        Registers {
+            registers: [0; 9],
+            engine: TimelessEngine::new(),
+        }
     }
 
     /// Retrieves the given registers current value.
@@ -138,13 +154,15 @@ impl Registers {
 
     /// Sets the registers content to the passed value.
     pub fn set(&mut self, reg: Register, val: u32) {
-        self.engine.add_change((reg as usize, self.registers[reg as usize]));
+        self.engine
+            .add_change((reg as usize, self.registers[reg as usize]));
         self.registers[reg as usize] = val
     }
 
     /// Transfers the source register contents to the destination register.
     pub fn transfer(&mut self, src: Register, dest: Register) {
-        self.engine.add_change((dest as usize, self.registers[dest as usize]));
+        self.engine
+            .add_change((dest as usize, self.registers[dest as usize]));
         self.registers[dest as usize] = self.registers[src as usize]
     }
 
@@ -169,7 +187,10 @@ impl Memory {
             let count = count as u32;
             memory.insert(count, *instruction);
         }
-        Memory{ underlying: memory, engine: TimelessEngine::new() }
+        Memory {
+            underlying: memory,
+            engine: TimelessEngine::new(),
+        }
     }
 
     /// Retrieves the value at the given address.
@@ -186,7 +207,7 @@ impl Memory {
         self.engine.add_change((address, val));
         *self.underlying.entry(address).or_default() = val
     }
-    
+
     pub fn revert(&mut self) {
         if let Some((_, changes)) = self.engine.step_backwards() {
             for (addr, val) in changes.iter().rev() {
