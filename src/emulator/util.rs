@@ -1,3 +1,4 @@
+use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
 pub mod types {
@@ -119,24 +120,27 @@ impl<T> TimelessEngine<T> {
         self.step_counter += 1
     }
 
-    pub fn step_backwards(&mut self) -> Option<(usize, Vec<T>)> {
+    pub fn step_backwards(&mut self) -> Option<Vec<T>> {
         if self.step_counter > 0 {
             self.step_counter -= 1;
         }
-        self.changes.remove_entry(&self.step_counter)
+
+        self.changes.remove(&self.step_counter)
     }
 
     pub fn add_change(&mut self, c: T) {
-        self.changes
-            .entry(self.step_counter)
-            .or_insert(Vec::new())
-            .push(c);
+        self.changes.entry(self.step_counter).or_insert(vec![c]);
     }
+}
+
+pub struct RegisterChange {
+    reg: Register,
+    val: u32,
 }
 
 pub struct Registers {
     pub registers: [u32; 9],
-    pub engine: TimelessEngine<(usize, u32)>,
+    pub engine: TimelessEngine<RegisterChange>,
 }
 
 impl Registers {
@@ -154,38 +158,42 @@ impl Registers {
 
     /// Sets the registers content to the passed value.
     pub fn set(&mut self, reg: Register, val: u32) {
-        self.engine
-            .add_change((reg as usize, self.registers[reg as usize]));
+        self.engine.add_change(RegisterChange {
+            reg,
+            val: self.registers[reg as usize],
+        });
         self.registers[reg as usize] = val
     }
 
     /// Transfers the source register contents to the destination register.
     pub fn transfer(&mut self, src: Register, dest: Register) {
-        self.engine
-            .add_change((dest as usize, self.registers[dest as usize]));
-        self.registers[dest as usize] = self.registers[src as usize]
+        self.set(dest, self.get(src));
     }
 
     pub fn revert(&mut self) {
-        if let Some((_, changes)) = self.engine.step_backwards() {
-            for (reg, val) in changes.iter().rev() {
-                self.registers[*reg] = *val
+        if let Some(changes) = self.engine.step_backwards() {
+            for RegisterChange { reg, val } in changes.iter().rev() {
+                self.registers[*reg as usize] = *val
             }
         }
     }
 }
 
+pub struct MemoryChange {
+    address: u32,
+    val: u32,
+}
+
 pub struct Memory {
     pub underlying: HashMap<u32, u32>,
-    pub engine: TimelessEngine<(u32, u32)>,
+    pub engine: TimelessEngine<MemoryChange>,
 }
 
 impl Memory {
     pub fn new(instructions: &[u32]) -> Self {
         let mut memory = HashMap::new();
         for (count, instruction) in instructions.into_iter().enumerate() {
-            let count = count as u32;
-            memory.insert(count, *instruction);
+            memory.insert(count as u32, *instruction);
         }
         Memory {
             underlying: memory,
@@ -204,14 +212,18 @@ impl Memory {
 
     /// Sets the value at the given address.
     pub fn set(&mut self, address: u32, val: u32) {
-        self.engine.add_change((address, val));
-        *self.underlying.entry(address).or_default() = val
+        self.engine.add_change(MemoryChange { address, val });
+
+        self.underlying
+            .entry(address)
+            .and_modify(|v| *v = val)
+            .or_insert(val);
     }
 
     pub fn revert(&mut self) {
-        if let Some((_, changes)) = self.engine.step_backwards() {
-            for (addr, val) in changes.iter().rev() {
-                *self.underlying.entry(*addr).or_default() = *val
+        if let Some(changes) = self.engine.step_backwards() {
+            for MemoryChange { address, val } in changes.iter().rev() {
+                *self.underlying.entry(*address).or_default() = *val
             }
         }
     }

@@ -1,7 +1,7 @@
-mod parser;
+mod assembler;
 mod util;
 
-use parser::Assembler;
+use assembler::Assembler;
 use std::collections::HashMap;
 use util::{
     types::{Instruction, Register},
