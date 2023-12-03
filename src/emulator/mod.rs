@@ -8,9 +8,11 @@ use util::{
     Memory, Registers,
 };
 
+use Register as R;
+
 pub struct Emulator {
-    pub registers: Registers,
-    pub memory: Memory,
+    registers: Registers,
+    memory: Memory,
     assembler: Assembler,
     breakpoints: HashMap<u32, bool>,
 }
@@ -63,7 +65,7 @@ impl Emulator {
         })
     }
 
-    /// Steps over a breakpoint, this button will only show when breakpoint has been hit.
+    /// Steps over a breakpoint.
     pub fn step_over(&mut self) {
         if !self.halted() {
             self.cycle()
@@ -79,100 +81,96 @@ impl Emulator {
         }
     }
 
-    /// Steps backward with a given amount of steps - will go all the way back to the beginning of execution.
+    /// Steps backward with a given amount of steps.
     pub fn backi(&mut self, steps: usize) {
         // There are checks when stepping back that we can't go further than our beginning step count, 0.
         for _ in 0..steps {
-            self.step_back()
+            self.registers.step_backward();
+            self.memory.step_backward();
         }
     }
 
     // One cycle of execution
     fn cycle(&mut self) {
         self.check_z();
+
+        // Fetch, decode, and execute next instruction.
         let instruction = self.fetch();
         self.execute(instruction);
-        self.registers.engine.step_forward();
-        self.memory.engine.step_forward();
-    }
 
-    fn step_back(&mut self) {
-        self.registers.revert();
-        self.memory.revert();
+        // Timeless engine steps forward one step in execution
+        self.registers.step_forward();
+        self.memory.step_forward();
     }
 
     fn execute(&mut self, i: Instruction) {
+        use Instruction::*;
+
         match i {
-            Instruction::LDAC => self.ldac(),
-            Instruction::STAC => self.stac(),
-            Instruction::JMP => self.jmp(),
-            Instruction::JMPZ => self.jmpz(),
-            Instruction::INC => self.inc(),
-            Instruction::MVAC => self.mvac(),
-            Instruction::MOVR => self.movr(),
-            Instruction::OUT => self.out(),
-            Instruction::ADD => self.add(),
-            Instruction::SUB => self.sub(),
-            Instruction::ASHR => self.ashr(),
-            Instruction::NOT => self.not(),
-            Instruction::OR => self.or(),
-            Instruction::AND => self.and(),
-            Instruction::CLAC => self.clac(),
-            Instruction::HALT => self.halt(),
+            LDAC => self.ldac(),
+            STAC => self.stac(),
+            JMP => self.jmp(),
+            JMPZ => self.jmpz(),
+            INC => self.inc(),
+            MVAC => self.mvac(),
+            MOVR => self.movr(),
+            OUT => self.out(),
+            ADD => self.add(),
+            SUB => self.sub(),
+            ASHR => self.ashr(),
+            NOT => self.not(),
+            OR => self.or(),
+            AND => self.and(),
+            CLAC => self.clac(),
+            HALT => self.halt(),
         }
     }
 
     fn fetch(&mut self) -> Instruction {
-        self.registers.transfer(Register::PC, Register::AR);
-        self.registers
-            .set(Register::DR, self.get_memory_from_register(Register::AR));
+        self.registers.transfer(R::PC, R::AR);
+        self.registers.set(R::DR, self.dereference(R::AR));
         self.inc_pc();
-        self.registers.transfer(Register::DR, Register::IR);
-        self.registers.transfer(Register::PC, Register::AR);
-        self.registers.get(Register::IR).into()
+        self.registers.transfer(R::DR, R::IR);
+        self.registers.transfer(R::PC, R::AR);
+        self.registers.get(R::IR).into()
     }
 
     fn halt(&mut self) {
-        self.registers.set(Register::S, 1);
+        self.registers.set(R::S, 1);
     }
 
     fn ldac(&mut self) {
-        let var = self.get_memory_from_register(Register::AR);
-        self.registers.set(Register::DR, var);
+        self.registers.set(R::DR, self.dereference(R::AR));
         self.inc_pc();
-        self.registers.transfer(Register::DR, Register::AR);
-        let var = self.get_memory_from_register(Register::AR);
-        self.registers.set(Register::DR, var);
-        self.registers.transfer(Register::DR, Register::ACC);
+        self.registers.transfer(R::DR, R::AR);
+        self.registers.set(R::DR, self.dereference(R::AR));
+        self.registers.transfer(R::DR, R::ACC);
     }
 
     fn stac(&mut self) {
-        let var = self.get_memory_from_register(Register::AR);
-        self.registers.set(Register::DR, var);
+        self.registers.set(R::DR, self.dereference(R::AR));
         self.inc_pc();
-        self.registers.transfer(Register::DR, Register::AR);
-        self.registers.transfer(Register::ACC, Register::DR);
-        let var_address = self.registers.get(Register::AR);
-        let value = self.registers.get(Register::DR);
-        self.memory.set(var_address, value);
+        self.registers.transfer(R::DR, R::AR);
+        self.registers.transfer(R::ACC, R::DR);
+        self.memory
+            .set(self.registers.get(R::AR), self.registers.get(R::DR));
     }
 
     fn mvac(&mut self) {
-        self.registers.transfer(Register::ACC, Register::R)
+        self.registers.transfer(R::ACC, R::R)
     }
 
     fn movr(&mut self) {
-        self.registers.transfer(Register::R, Register::ACC)
+        self.registers.transfer(R::R, R::ACC)
     }
 
     fn jmp(&mut self) {
-        let new_pc = self.get_memory_from_register(Register::AR);
-        self.registers.set(Register::DR, new_pc);
-        self.registers.set(Register::PC, new_pc);
+        self.registers.set(R::DR, self.dereference(R::AR));
+        self.registers.transfer(R::DR, R::PC);
     }
 
     fn jmpz(&mut self) {
-        if self.registers.get(Register::Z) == 1 {
+        if self.registers.get(R::Z) == 1 {
             self.jmp()
         } else {
             self.inc_pc()
@@ -180,74 +178,71 @@ impl Emulator {
     }
 
     fn out(&mut self) {
-        self.registers.transfer(Register::ACC, Register::OUTR);
+        self.registers.transfer(R::ACC, R::OUTR);
     }
 
     fn sub(&mut self) {
-        let new_val = self.registers.get(Register::ACC) - self.registers.get(Register::R);
-        self.registers.set(Register::ACC, new_val)
+        let new_val = self.registers.get(R::ACC) - self.registers.get(R::R);
+        self.registers.set(R::ACC, new_val)
     }
 
     fn add(&mut self) {
-        let new_val = self.registers.get(Register::ACC) + self.registers.get(Register::R);
-        self.registers.set(Register::ACC, new_val)
+        let new_val = self.registers.get(R::ACC) + self.registers.get(R::R);
+        self.registers.set(R::ACC, new_val)
     }
 
     fn inc(&mut self) {
-        self.registers
-            .set(Register::ACC, self.registers.get(Register::ACC) + 1)
+        self.registers.set(R::ACC, self.registers.get(R::ACC) + 1)
     }
 
     fn clac(&mut self) {
-        self.registers.set(Register::ACC, 0)
+        self.registers.set(R::ACC, 0)
     }
 
     fn and(&mut self) {
-        let new_val = self.registers.get(Register::ACC) & self.registers.get(Register::R);
-        self.registers.set(Register::ACC, new_val)
+        let new_val = self.registers.get(R::ACC) & self.registers.get(R::R);
+        self.registers.set(R::ACC, new_val)
     }
 
     fn or(&mut self) {
-        let new_val = self.registers.get(Register::ACC) | self.registers.get(Register::R);
-        self.registers.set(Register::ACC, new_val)
+        let new_val = self.registers.get(R::ACC) | self.registers.get(R::R);
+        self.registers.set(R::ACC, new_val)
     }
 
     fn ashr(&mut self) {
-        self.registers
-            .set(Register::ACC, self.registers.get(Register::ACC) >> 1)
+        self.registers.set(R::ACC, self.registers.get(R::ACC) >> 1)
     }
 
     fn not(&mut self) {
-        self.registers
-            .set(Register::ACC, !self.registers.get(Register::ACC))
+        self.registers.set(R::ACC, !self.registers.get(R::ACC))
     }
 
     fn inc_pc(&mut self) {
-        self.registers
-            .set(Register::PC, self.registers.get(Register::PC) + 1)
+        self.registers.set(R::PC, self.registers.get(R::PC) + 1)
     }
 
-    fn get_memory_from_register(&self, r: Register) -> u32 {
-        let var_address = self.registers.get(r);
-        self.memory.get(var_address)
+    /// Dereferences the current address stored in the given register
+    fn dereference(&self, r: Register) -> u32 {
+        let address = self.registers.get(r);
+        self.memory.get(address)
     }
 
     fn check_z(&mut self) -> bool {
-        let acc = self.registers.get(Register::ACC);
+        let acc = self.registers.get(R::ACC);
         if acc == 0 {
-            self.registers.set(Register::Z, 1);
+            self.registers.set(R::Z, 1);
             true
         } else {
-            self.registers.set(Register::Z, 0);
+            self.registers.set(R::Z, 0);
             false
         }
     }
 
     fn halted(&self) -> bool {
-        self.registers.get(Register::S) == 1
+        self.registers.get(R::S) == 1
     }
 
     fn should_stop(&self) -> bool {
-        self.halted() || self.query(self.registers.get(Register::PC))
+        self.halted() || self.query(self.registers.get(R::PC))
     }
 }

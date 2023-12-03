@@ -157,7 +157,7 @@ impl<T> TimelessEngine<T> {
         self.step_counter += 1
     }
 
-    pub fn step_backwards(&mut self) -> Option<Vec<T>> {
+    pub fn step_backward(&mut self) -> Option<Vec<T>> {
         if self.step_counter > 0 {
             self.step_counter -= 1;
         }
@@ -176,8 +176,8 @@ pub struct RegisterChange {
 }
 
 pub struct Registers {
-    pub registers: [u32; 9],
-    pub engine: TimelessEngine<RegisterChange>,
+    registers: [u32; 9],
+    engine: TimelessEngine<RegisterChange>,
 }
 
 impl Registers {
@@ -207,8 +207,12 @@ impl Registers {
         self.set(dest, self.get(src));
     }
 
-    pub fn revert(&mut self) {
-        if let Some(changes) = self.engine.step_backwards() {
+    pub fn step_forward(&mut self) {
+        self.engine.step_forward();
+    }
+
+    pub fn step_backward(&mut self) {
+        if let Some(changes) = self.engine.step_backward() {
             for RegisterChange { reg, val } in changes.iter().rev() {
                 self.registers[*reg as usize] = *val
             }
@@ -216,14 +220,14 @@ impl Registers {
     }
 }
 
+pub struct Memory {
+    underlying: HashMap<u32, u32>,
+    engine: TimelessEngine<MemoryChange>,
+}
+
 pub struct MemoryChange {
     address: u32,
     val: u32,
-}
-
-pub struct Memory {
-    pub underlying: HashMap<u32, u32>,
-    pub engine: TimelessEngine<MemoryChange>,
 }
 
 impl Memory {
@@ -257,8 +261,12 @@ impl Memory {
             .or_insert(val);
     }
 
-    pub fn revert(&mut self) {
-        if let Some(changes) = self.engine.step_backwards() {
+    pub fn step_forward(&mut self) {
+        self.engine.step_forward()
+    }
+
+    pub fn step_backward(&mut self) {
+        if let Some(changes) = self.engine.step_backward() {
             for MemoryChange { address, val } in changes.iter().rev() {
                 *self.underlying.entry(*address).or_default() = *val
             }
