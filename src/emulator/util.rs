@@ -1,13 +1,18 @@
-use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
 pub mod types {
     use thiserror::Error;
 
     #[derive(Error, Debug)]
-    pub enum EmulatorErr {
-        #[error("There was an error parsing the file")]
-        ParseFailure,
+    pub enum Error {
+        #[error("Unknown keyword '{0}' used on line {1}")]
+        UnknownKeyword(String, usize),
+        #[error("Expected an operand after '{0}' on line {1}")]
+        ExpectedOperand(String, usize),
+        #[error("Invalid operand defined for variable '{0}' on line {1}")]
+        InvalidOperand(String, usize),
+        #[error("Unknown variable '{0}' used as operand")]
+        UnknownVariable(String),
     }
 
     /// All registers in the RSC architecture.
@@ -74,6 +79,38 @@ pub mod types {
         OR,
         ASHR,
         NOT,
+    }
+
+    impl Instruction {
+        pub fn has_operand(&self) -> bool {
+            matches!(self, Self::LDAC | Self::STAC | Self::JMP | Self::JMPZ)
+        }
+    }
+
+    impl TryFrom<&str> for Instruction {
+        type Error = ();
+
+        fn try_from(s: &str) -> Result<Self, Self::Error> {
+            match s {
+                "HALT" => Ok(Self::HALT),
+                "LDAC" => Ok(Self::LDAC),
+                "STAC" => Ok(Self::STAC),
+                "MVAC" => Ok(Self::MVAC),
+                "MOVR" => Ok(Self::MOVR),
+                "JMP" => Ok(Self::JMP),
+                "JMPZ" => Ok(Self::JMPZ),
+                "OUT" => Ok(Self::OUT),
+                "SUB" => Ok(Self::SUB),
+                "ADD" => Ok(Self::ADD),
+                "INC" => Ok(Self::INC),
+                "CLAC" => Ok(Self::CLAC),
+                "AND" => Ok(Self::AND),
+                "OR" => Ok(Self::OR),
+                "ASHR" => Ok(Self::ASHR),
+                "NOT" => Ok(Self::NOT),
+                _ => Err(()),
+            }
+        }
     }
 
     impl From<u32> for Instruction {
@@ -192,7 +229,7 @@ pub struct Memory {
 impl Memory {
     pub fn new(instructions: &[u32]) -> Self {
         let mut memory = HashMap::new();
-        for (count, instruction) in instructions.into_iter().enumerate() {
+        for (count, instruction) in instructions.iter().enumerate() {
             memory.insert(count as u32, *instruction);
         }
         Memory {

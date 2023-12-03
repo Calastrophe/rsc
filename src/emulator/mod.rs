@@ -8,19 +8,19 @@ use util::{
     Memory, Registers,
 };
 
-pub struct Emulator<'a> {
-    assembler: Assembler<'a>,
+pub struct Emulator {
     pub registers: Registers,
     pub memory: Memory,
+    assembler: Assembler,
     breakpoints: HashMap<u32, bool>,
 }
 
-impl<'a> Emulator<'a> {
-    pub fn new(assembler: Assembler<'a>, memory: Memory) -> Self {
+impl Emulator {
+    pub fn new(assembler: Assembler) -> Self {
         Emulator {
-            assembler,
             registers: Registers::new(),
-            memory,
+            memory: Memory::new(assembler.instructions()),
+            assembler,
             breakpoints: HashMap::new(),
         }
     }
@@ -44,7 +44,7 @@ impl<'a> Emulator<'a> {
 
     /// Returns if a given address is a breakpoint and is enabled
     pub fn query(&self, address: u32) -> bool {
-        self.breakpoints.get(&address).is_some_and(|v| *v == true)
+        self.breakpoints.get(&address).is_some_and(|v| *v)
     }
 
     /// Enables a given breakpoint, returns false if the breakpoint does not exist.
