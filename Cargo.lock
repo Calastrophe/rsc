@@ -639,6 +639,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rsc"
+version = "0.1.0"
+dependencies = [
+ "dioxus",
+ "dioxus-web",
+ "thiserror",
+]
+
+[[package]]
 name = "rustc-hash"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -651,15 +660,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bfa0f585226d2e68097d4f95d113b15b83a82e819ab25717ec0590d9584ef366"
 dependencies = [
  "semver",
-]
-
-[[package]]
-name = "rustrsc"
-version = "0.1.0"
-dependencies = [
- "dioxus",
- "dioxus-web",
- "thiserror",
 ]
 
 [[package]]
