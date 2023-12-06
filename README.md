@@ -1,6 +1,6 @@
 # rsc
-rsc is a *work-in-progress* emulator for the RSC architecture with a web-based interface written in Rust.
+rsc is a *work-in-progress* emulator for the RSC architecture with a web based interface written in Rust.
 
-The front end is made possible by Dioxus.
+The front end portion is made possible by [egui](https://github.com/emilk/egui).
 
 

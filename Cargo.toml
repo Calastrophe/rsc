@@ -7,8 +7,26 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 thiserror = "1.0.40"
-dioxus = "0.4.0"
-dioxus-web = "0.4.0"
+egui = "0.24.1"
+eframe = { version = "0.24.1", default-features = false, features = [
+    "default_fonts",
+    "glow",
+]}
+log = "0.4"
+rfd = "0.12.1"
+cfg-if = "1.0.0"
+egui-modal = "0.3.1"
+
+# native:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+env_logger = "0.10"
+
+# web:
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+web-sys = { version = "0.3", features = ["Window", "Url", "File", "Blob", "HtmlAnchorElement", "BlobPropertyBag", "FilePropertyBag"] }
+wasm-bindgen = "0.2"
+js-sys = "0.3"
+wasm-bindgen-futures = "0.4"
 
 [profile.release]
 opt-level = 2 # fast and small wasm
