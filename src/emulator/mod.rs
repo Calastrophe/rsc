@@ -1,7 +1,7 @@
-mod assembler;
-mod util;
+pub mod assembler;
+pub mod util;
 
-use assembler::Assembler;
+pub use assembler::Assembler;
 use std::collections::HashMap;
 use util::{
     types::{Instruction, Register},
@@ -11,8 +11,8 @@ use util::{
 use Register as R;
 
 pub struct Emulator {
-    registers: Registers,
-    memory: Memory,
+    pub registers: Registers,
+    pub memory: Memory,
     assembler: Assembler,
     breakpoints: HashMap<u32, bool>,
 }
