@@ -9,6 +9,4 @@ edition = "2021"
 thiserror = "1.0.40"
 ctrlflow = { path = "../ctrlflow" }
 serde = { version = "1.0.195", features = ["derive"] }
-serde_with = "3.5.0"
-clap = { version = "4.4.18", features = ["derive"] }
 
