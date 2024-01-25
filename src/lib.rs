@@ -1,8 +1,10 @@
 pub mod assembler;
+mod tracing;
 pub mod util;
 
-pub use assembler::Assembler;
+use ctrlflow::{Event, Tracer};
 use std::collections::HashMap;
+use tracing::RSC;
 use util::{
     types::{Instruction, Register},
     Memory, Registers,
@@ -13,94 +15,33 @@ use Register as R;
 pub struct Emulator {
     pub registers: Registers,
     pub memory: Memory,
-    assembler: Assembler,
-    breakpoints: HashMap<u32, bool>,
+    tracer: Tracer<RSC>,
 }
 
 impl Emulator {
-    pub fn new(assembler: Assembler) -> Self {
+    pub fn new(log_name: &str, memory: HashMap<u32, u32>) -> Self {
+        let tracer = Tracer::new(log_name, memory.iter()).unwrap();
         Emulator {
-            registers: Registers::new(),
-            memory: Memory::new(assembler.instructions()),
-            assembler,
-            breakpoints: HashMap::new(),
+            registers: Registers::new(tracer.sender()),
+            memory: Memory::new(memory, tracer.sender()),
+            tracer,
         }
     }
 
     /// Starts the emulation of the given instructions to the emulator.
     pub fn start(&mut self) {
-        while !self.should_stop() {
+        while !self.halted() {
             self.cycle();
         }
     }
 
-    /// Sets an enabled breakpoint at the given address
-    pub fn set_breakpoint(&mut self, address: u32) {
-        self.breakpoints.insert(address, true);
-    }
-
-    /// Removes a breakpoint at a given address, returns if the removal acted on anything.
-    pub fn remove_breakpoint(&mut self, address: u32) -> bool {
-        self.breakpoints.remove(&address).is_some()
-    }
-
-    /// Returns if a given address is a breakpoint and is enabled
-    pub fn query(&self, address: u32) -> bool {
-        self.breakpoints.get(&address).is_some_and(|v| *v)
-    }
-
-    /// Enables a given breakpoint, returns false if the breakpoint does not exist.
-    pub fn enable(&mut self, address: u32) -> bool {
-        self.breakpoints.get_mut(&address).is_some_and(|v| {
-            *v = true;
-            true
-        })
-    }
-
-    /// Disables a given breakpoint, returns false if the breakpoint does not exist.
-    pub fn disable(&mut self, address: u32) -> bool {
-        self.breakpoints.get_mut(&address).is_some_and(|v| {
-            *v = false;
-            true
-        })
-    }
-
-    /// Steps over a breakpoint.
-    pub fn step_over(&mut self) {
-        if !self.halted() {
-            self.cycle()
-        }
-    }
-
-    /// Steps forward with a given amount of steps, will stop progresing when S == 1 or a breakpoint is hit.
-    pub fn stepi(&mut self, steps: usize) {
-        for _ in 0..steps {
-            if !self.should_stop() {
-                self.cycle()
-            }
-        }
-    }
-
-    /// Steps backward with a given amount of steps.
-    pub fn backi(&mut self, steps: usize) {
-        // There are checks when stepping back that we can't go further than our beginning step count, 0.
-        for _ in 0..steps {
-            self.registers.step_backward();
-            self.memory.step_backward();
-        }
-    }
-
     // One cycle of execution
-    fn cycle(&mut self) {
+    pub fn cycle(&mut self) {
         self.check_z();
 
         // Fetch, decode, and execute next instruction.
         let instruction = self.fetch();
         self.execute(instruction);
-
-        // Timeless engine steps forward one step in execution
-        self.registers.step_forward();
-        self.memory.step_forward();
     }
 
     fn execute(&mut self, i: Instruction) {
@@ -124,6 +65,8 @@ impl Emulator {
             CLAC => self.clac(),
             HALT => self.halt(),
         }
+
+        self.tracer.send(ctrlflow::Event::InsnEnd).unwrap()
     }
 
     fn fetch(&mut self) -> Instruction {
@@ -132,7 +75,7 @@ impl Emulator {
         self.inc_pc();
         self.registers.transfer(R::DR, R::IR);
         self.registers.transfer(R::PC, R::AR);
-        self.registers.get(R::IR).into()
+        self.registers.get(R::PC).into()
     }
 
     fn halt(&mut self) {
@@ -242,7 +185,7 @@ impl Emulator {
         self.registers.get(R::S) == 1
     }
 
-    fn should_stop(&self) -> bool {
-        self.halted() || self.query(self.registers.get(R::PC))
+    pub fn terminate(self) {
+        self.tracer.terminate().unwrap()
     }
 }

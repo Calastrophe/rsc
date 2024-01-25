@@ -13,10 +13,12 @@ pub mod types {
         InvalidOperand(String, usize),
         #[error("Unknown variable '{0}' used as operand")]
         UnknownVariable(String),
+        #[error("IO Error: {0}")]
+        IO(#[from] std::io::Error),
     }
 
     /// All registers in the RSC architecture.
-    #[derive(Debug, Clone, Copy)]
+    #[derive(serde::Serialize, Debug, Clone, Copy)]
     pub enum Register {
         S,
         Z,
@@ -30,20 +32,6 @@ pub mod types {
     }
 
     impl Register {
-        pub fn as_str(self) -> &'static str {
-            match self {
-                Self::Z => "Z",
-                Self::S => "S",
-                Self::IR => "IR",
-                Self::AR => "AR",
-                Self::DR => "DR",
-                Self::PC => "PC",
-                Self::OUTR => "OUTR",
-                Self::ACC => "ACC",
-                Self::R => "R",
-            }
-        }
-
         pub fn iter() -> std::slice::Iter<'static, Register> {
             [
                 Register::S,
@@ -84,6 +72,27 @@ pub mod types {
     impl Instruction {
         pub fn has_operand(&self) -> bool {
             matches!(self, Self::LDAC | Self::STAC | Self::JMP | Self::JMPZ)
+        }
+
+        pub fn as_str(&self) -> &'static str {
+            match self {
+                Instruction::HALT => "HALT",
+                Instruction::LDAC => "LDAC",
+                Instruction::STAC => "STAC",
+                Instruction::MVAC => "MVAC",
+                Instruction::MOVR => "MOVR",
+                Instruction::JMP => "JMP",
+                Instruction::JMPZ => "JMPZ",
+                Instruction::OUT => "OUT",
+                Instruction::SUB => "SUB",
+                Instruction::ADD => "ADD",
+                Instruction::INC => "INC",
+                Instruction::CLAC => "CLAC",
+                Instruction::AND => "AND",
+                Instruction::OR => "OR",
+                Instruction::ASHR => "ASHR",
+                Instruction::NOT => "NOT",
+            }
         }
     }
 
@@ -138,67 +147,36 @@ pub mod types {
     }
 }
 
+use crate::tracing::RSC;
+use ctrlflow::{tracer::EventSender, Event};
 use types::Register;
-
-pub struct TimelessEngine<T> {
-    step_counter: usize,
-    changes: HashMap<usize, Vec<T>>,
-}
-
-impl<T> TimelessEngine<T> {
-    pub fn new() -> Self {
-        TimelessEngine {
-            step_counter: 0,
-            changes: HashMap::new(),
-        }
-    }
-
-    pub fn step_forward(&mut self) {
-        self.step_counter += 1
-    }
-
-    pub fn step_backward(&mut self) -> Option<Vec<T>> {
-        if self.step_counter > 0 {
-            self.step_counter -= 1;
-        }
-
-        self.changes.remove(&self.step_counter)
-    }
-
-    pub fn add_change(&mut self, c: T) {
-        self.changes.entry(self.step_counter).or_insert(vec![c]);
-    }
-}
-
-pub struct RegisterChange {
-    reg: Register,
-    val: u32,
-}
 
 pub struct Registers {
     registers: [u32; 9],
-    engine: TimelessEngine<RegisterChange>,
+    sender: EventSender<RSC>,
 }
 
 impl Registers {
-    pub fn new() -> Self {
+    pub fn new(sender: EventSender<RSC>) -> Self {
         Registers {
             registers: [0; 9],
-            engine: TimelessEngine::new(),
+            sender,
         }
     }
 
     /// Retrieves the given registers current value.
     pub fn get(&self, reg: Register) -> u32 {
+        let _ = self.sender.send(Event::RegRead(reg)).unwrap();
         self.registers[reg as usize]
     }
 
     /// Sets the registers content to the passed value.
     pub fn set(&mut self, reg: Register, val: u32) {
-        self.engine.add_change(RegisterChange {
-            reg,
-            val: self.registers[reg as usize],
-        });
+        let _ = self
+            .sender
+            .send(Event::RegWrite(reg, Box::from(val.to_le_bytes())))
+            .unwrap();
+
         self.registers[reg as usize] = val
     }
 
@@ -206,45 +184,26 @@ impl Registers {
     pub fn transfer(&mut self, src: Register, dest: Register) {
         self.set(dest, self.get(src));
     }
-
-    pub fn step_forward(&mut self) {
-        self.engine.step_forward();
-    }
-
-    pub fn step_backward(&mut self) {
-        if let Some(changes) = self.engine.step_backward() {
-            for RegisterChange { reg, val } in changes.iter().rev() {
-                self.registers[*reg as usize] = *val
-            }
-        }
-    }
 }
 
 pub struct Memory {
     underlying: HashMap<u32, u32>,
-    engine: TimelessEngine<MemoryChange>,
-}
-
-pub struct MemoryChange {
-    address: u32,
-    val: u32,
+    sender: EventSender<RSC>,
 }
 
 impl Memory {
-    pub fn new(instructions: &[u32]) -> Self {
-        let mut memory = HashMap::new();
-        for (count, instruction) in instructions.iter().enumerate() {
-            memory.insert(count as u32, *instruction);
-        }
+    pub fn new(memory: HashMap<u32, u32>, sender: EventSender<RSC>) -> Self {
         Memory {
             underlying: memory,
-            engine: TimelessEngine::new(),
+            sender,
         }
     }
 
     /// Retrieves the value at the given address.
     pub fn get(&self, address: u32) -> u32 {
         // Avoid the needless insertion, just keep returning zero until its set.
+        let _ = self.sender.send(Event::MemRead(address)).unwrap();
+
         match self.underlying.get(&address) {
             Some(v) => *v,
             None => 0,
@@ -253,23 +212,14 @@ impl Memory {
 
     /// Sets the value at the given address.
     pub fn set(&mut self, address: u32, val: u32) {
-        self.engine.add_change(MemoryChange { address, val });
+        let _ = self
+            .sender
+            .send(Event::MemWrite(address, Box::from(val.to_le_bytes())))
+            .unwrap();
 
         self.underlying
             .entry(address)
             .and_modify(|v| *v = val)
             .or_insert(val);
-    }
-
-    pub fn step_forward(&mut self) {
-        self.engine.step_forward()
-    }
-
-    pub fn step_backward(&mut self) {
-        if let Some(changes) = self.engine.step_backward() {
-            for MemoryChange { address, val } in changes.iter().rev() {
-                *self.underlying.entry(*address).or_default() = *val
-            }
-        }
     }
 }
