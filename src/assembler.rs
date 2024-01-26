@@ -1,15 +1,10 @@
 use crate::util::types::{Error, Instruction};
 use std::collections::HashMap;
 
-// The assembler owns the input, but then parses it.
-pub struct Assembler {
-    instructions: Vec<u32>,
-    symbol_map: HashMap<String, u32>,
-    replaced: HashMap<u32, String>,
-}
+pub struct Assembler;
 
 impl Assembler {
-    pub fn parse(input: String) -> Result<Assembler, Error> {
+    pub fn parse(input: String) -> Result<HashMap<u32, u32>, Error> {
         let mut instructions = Vec::new();
         let mut symbol_map = HashMap::new();
         let mut to_replace = HashMap::new();
@@ -74,38 +69,14 @@ impl Assembler {
             }
         }
 
-        // Drain the map, iterate over the address variable pairs, replace them with the actual
-        // memory address of the variable location.
-        //
-        // This approach prevents having to reallocate memory.
-        for (address, variable) in to_replace.drain().collect::<Vec<_>>() {
+        for (address, variable) in to_replace {
             instructions[address as usize] = *symbol_map
                 .get(&variable)
                 .ok_or_else(|| Error::UnknownVariable(variable.to_string()))?;
-
-            // Add the index to the replaced instructions map
-            to_replace.insert(address, variable);
         }
 
-        Ok(Assembler {
-            instructions,
-            symbol_map,
-            replaced: to_replace,
-        })
-    }
-
-    pub fn instructions(&self) -> HashMap<u32, u32> {
-        (0..self.instructions.len() as u32)
-            .into_iter()
-            .map(|k| (k, self.instructions[k as usize]))
-            .collect()
-    }
-
-    pub fn symbol_map(&self) -> &HashMap<String, u32> {
-        &self.symbol_map
-    }
-
-    pub fn replaced(&self) -> &HashMap<u32, String> {
-        &self.replaced
+        Ok((0..instructions.len())
+            .map(|k| (k as u32, instructions[k]))
+            .collect())
     }
 }

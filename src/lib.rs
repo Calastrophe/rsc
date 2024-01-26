@@ -4,7 +4,7 @@ pub mod util;
 
 use ctrlflow::{Event, Tracer};
 use std::collections::HashMap;
-use tracing::RSC;
+use tracing::{InsnWrapper, RSC};
 use util::{
     types::{Instruction, Register},
     Memory, Registers,
@@ -39,9 +39,37 @@ impl Emulator {
     pub fn cycle(&mut self) {
         self.check_z();
 
-        // Fetch, decode, and execute next instruction.
-        let instruction = self.fetch();
+        // Grab the address of the next instruction and the instruction to be executed.
+        let (addr, instruction) = self.fetch();
+
+        // This is partially because we don't have a disassembler or pretty printer which can
+        // disassemble the given instruction at an address. So rather than write that, this is just
+        // a quick hack to the get the same functionality. However, it IS NOT required for this
+        // tracing library.
+        let wrapped = match instruction {
+            Instruction::JMP | Instruction::JMPZ | Instruction::LDAC | Instruction::STAC => {
+                InsnWrapper::Op(instruction, self.dereference(R::PC))
+            }
+            _ => InsnWrapper::NoOp(instruction),
+        };
+
+        // Tell the tracer we are now starting the given instruction.
+        // It is important to remember that the instruction you pass over should be serialized as a
+        // String. Almost as if it was just from a disassembler. However, its up to you as the
+        // implementer what you want to show in the graph.
+        let _ = self.tracer.send(Event::InsnStart(addr, wrapped));
+
         self.execute(instruction);
+    }
+
+    fn fetch(&mut self) -> (u32, Instruction) {
+        self.registers.transfer(R::PC, R::AR);
+        self.registers.set(R::DR, self.dereference(R::AR));
+        let addr = self.registers.get(R::PC);
+        self.inc_pc();
+        self.registers.transfer(R::DR, R::IR);
+        self.registers.transfer(R::PC, R::AR);
+        (addr, self.registers.get(R::IR).into())
     }
 
     fn execute(&mut self, i: Instruction) {
@@ -66,16 +94,7 @@ impl Emulator {
             HALT => self.halt(),
         }
 
-        self.tracer.send(ctrlflow::Event::InsnEnd).unwrap()
-    }
-
-    fn fetch(&mut self) -> Instruction {
-        self.registers.transfer(R::PC, R::AR);
-        self.registers.set(R::DR, self.dereference(R::AR));
-        self.inc_pc();
-        self.registers.transfer(R::DR, R::IR);
-        self.registers.transfer(R::PC, R::AR);
-        self.registers.get(R::PC).into()
+        self.tracer.send(Event::InsnEnd).unwrap()
     }
 
     fn halt(&mut self) {
@@ -111,6 +130,13 @@ impl Emulator {
         self.registers.set(R::DR, self.dereference(R::AR));
         self.registers.transfer(R::DR, R::PC);
     }
+
+    fn call(&mut self) {
+        self.registers.set(R::DR, self.dereference(R::AR));
+        self.registers.transfer(R::DR, R::PC);
+    }
+
+    fn ret(&mut self) {}
 
     fn jmpz(&mut self) {
         if self.registers.get(R::Z) == 1 {

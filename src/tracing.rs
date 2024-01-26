@@ -1,15 +1,33 @@
 use crate::util::types::{Instruction, Register};
-use ctrlflow::{
-    instruction::JumpKind, register::Info, Architecture, InstructionInfo, RegisterInfo,
-};
+use ctrlflow::{instruction::JumpKind, register::Info, Architecture, InsnInfo, RegInfo};
 use serde::Serialize;
 
 #[derive(Serialize, Clone)]
 pub struct RSC;
 
+pub enum InsnWrapper {
+    NoOp(Instruction),
+    Op(Instruction, u32),
+}
+
+impl Serialize for InsnWrapper {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match *self {
+            Self::NoOp(ref insn) => serializer.serialize_str(insn.as_str()),
+            Self::Op(ref insn, ref op) => {
+                let insn = format!("{} {}", insn.as_str(), op);
+                serializer.serialize_str(&insn)
+            }
+        }
+    }
+}
+
 impl Architecture for RSC {
     type Register = Register;
-    type Instruction = Instruction;
+    type Instruction = InsnWrapper;
     type AddressWidth = u32;
 }
 
@@ -19,13 +37,13 @@ pub const REGISTER_INFOS: [Info<Register>; 9] = [
     Info::new("IR", Register::IR, Register::S, None, 4),
     Info::new("AR", Register::AR, Register::S, None, 4),
     Info::new("DR", Register::DR, Register::S, None, 4),
-    Info::new("PC", Register::OUTR, Register::S, None, 4),
+    Info::new("PC", Register::PC, Register::S, None, 4),
     Info::new("OUTR", Register::OUTR, Register::S, None, 4),
     Info::new("ACC", Register::ACC, Register::S, None, 4),
     Info::new("R", Register::R, Register::S, None, 4),
 ];
 
-impl RegisterInfo for Register {
+impl RegInfo for Register {
     fn info(&self) -> &'static Info<Self> {
         &REGISTER_INFOS[*self as usize]
     }
@@ -35,19 +53,27 @@ impl RegisterInfo for Register {
     }
 }
 
-impl InstructionInfo for Instruction {
+impl Serialize for Register {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_u32(*self as u32)
+    }
+}
+
+impl InsnInfo for InsnWrapper {
     fn size(&self) -> Option<u16> {
         match self {
-            Instruction::JMP => Some(4),
-            Instruction::JMPZ => Some(4),
+            InsnWrapper::Op(Instruction::JMP | Instruction::JMPZ, ..) => Some(8),
             _ => None,
         }
     }
 
     fn kind(&self) -> Option<JumpKind> {
         match self {
-            Instruction::JMP => Some(JumpKind::Unconditional),
-            Instruction::JMPZ => Some(JumpKind::Conditional),
+            InsnWrapper::Op(Instruction::JMP, ..) => Some(JumpKind::Unconditional),
+            InsnWrapper::Op(Instruction::JMPZ, ..) => Some(JumpKind::Conditional),
             _ => None,
         }
     }

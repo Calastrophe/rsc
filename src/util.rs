@@ -18,7 +18,7 @@ pub mod types {
     }
 
     /// All registers in the RSC architecture.
-    #[derive(serde::Serialize, Debug, Clone, Copy)]
+    #[derive(Debug, Clone, Copy)]
     pub enum Register {
         S,
         Z,
@@ -212,10 +212,7 @@ impl Memory {
 
     /// Sets the value at the given address.
     pub fn set(&mut self, address: u32, val: u32) {
-        let _ = self
-            .sender
-            .send(Event::MemWrite(address, Box::from(val.to_le_bytes())))
-            .unwrap();
+        let _ = self.sender.send(Event::MemWrite(address, val)).unwrap();
 
         self.underlying
             .entry(address)

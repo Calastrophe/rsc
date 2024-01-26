@@ -7,8 +7,8 @@ fn main() -> Result<(), Error> {
         .expect("Missing name for trace file");
 
     let input = std::fs::read_to_string(path)?;
-    let assembler = Assembler::parse(input)?;
-    let mut emulator = Emulator::new(&output, assembler.instructions());
+    let instructions = Assembler::parse(input)?;
+    let mut emulator = Emulator::new(&output, instructions);
     emulator.start();
     emulator.terminate();
 
