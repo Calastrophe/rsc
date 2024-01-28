@@ -136,7 +136,7 @@ impl Emulator {
     }
 
     fn call(&mut self) {
-        self.call_stack.push(self.registers.get(R::PC));
+        self.call_stack.push(self.registers.get(R::PC) + 1);
         self.registers.set(R::DR, self.dereference(R::AR));
         self.registers.transfer(R::DR, R::PC);
     }
