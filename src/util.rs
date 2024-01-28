@@ -67,11 +67,16 @@ pub mod types {
         OR,
         ASHR,
         NOT,
+        CALL,
+        RET,
     }
 
     impl Instruction {
         pub fn has_operand(&self) -> bool {
-            matches!(self, Self::LDAC | Self::STAC | Self::JMP | Self::JMPZ)
+            matches!(
+                self,
+                Self::LDAC | Self::STAC | Self::JMP | Self::JMPZ | Self::CALL
+            )
         }
 
         pub fn as_str(&self) -> &'static str {
@@ -92,6 +97,8 @@ pub mod types {
                 Instruction::OR => "OR",
                 Instruction::ASHR => "ASHR",
                 Instruction::NOT => "NOT",
+                Instruction::CALL => "CALL",
+                Instruction::RET => "RET",
             }
         }
     }
@@ -117,6 +124,8 @@ pub mod types {
                 "OR" => Ok(Self::OR),
                 "ASHR" => Ok(Self::ASHR),
                 "NOT" => Ok(Self::NOT),
+                "CALL" => Ok(Self::CALL),
+                "RET" => Ok(Self::RET),
                 _ => Err(()),
             }
         }
@@ -141,6 +150,8 @@ pub mod types {
                 13 => Self::OR,
                 14 => Self::ASHR,
                 15 => Self::NOT,
+                16 => Self::CALL,
+                17 => Self::RET,
                 _ => unreachable!(),
             }
         }

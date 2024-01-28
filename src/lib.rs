@@ -15,6 +15,7 @@ use Register as R;
 pub struct Emulator {
     pub registers: Registers,
     pub memory: Memory,
+    pub call_stack: Vec<u32>,
     tracer: Tracer<RSC>,
 }
 
@@ -24,6 +25,7 @@ impl Emulator {
         Emulator {
             registers: Registers::new(tracer.sender()),
             memory: Memory::new(memory, tracer.sender()),
+            call_stack: Vec::new(),
             tracer,
         }
     }
@@ -92,6 +94,8 @@ impl Emulator {
             AND => self.and(),
             CLAC => self.clac(),
             HALT => self.halt(),
+            CALL => self.call(),
+            RET => self.ret(),
         }
 
         self.tracer.send(Event::InsnEnd).unwrap()
@@ -132,11 +136,19 @@ impl Emulator {
     }
 
     fn call(&mut self) {
+        self.call_stack.push(self.registers.get(R::PC));
         self.registers.set(R::DR, self.dereference(R::AR));
         self.registers.transfer(R::DR, R::PC);
     }
 
-    fn ret(&mut self) {}
+    fn ret(&mut self) {
+        self.registers.set(
+            R::PC,
+            self.call_stack
+                .pop()
+                .expect("called RET when call stack was empty"),
+        )
+    }
 
     fn jmpz(&mut self) {
         if self.registers.get(R::Z) == 1 {

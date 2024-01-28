@@ -32,15 +32,15 @@ impl Architecture for RSC {
 }
 
 pub const REGISTER_INFOS: [Info<Register>; 9] = [
-    Info::new("S", Register::S, Register::S, None, 1),
-    Info::new("Z", Register::Z, Register::S, None, 1),
-    Info::new("IR", Register::IR, Register::S, None, 4),
-    Info::new("AR", Register::AR, Register::S, None, 4),
-    Info::new("DR", Register::DR, Register::S, None, 4),
-    Info::new("PC", Register::PC, Register::S, None, 4),
-    Info::new("OUTR", Register::OUTR, Register::S, None, 4),
-    Info::new("ACC", Register::ACC, Register::S, None, 4),
-    Info::new("R", Register::R, Register::S, None, 4),
+    Info::new("S", Register::S, None, 1),
+    Info::new("Z", Register::Z, None, 1),
+    Info::new("IR", Register::IR, None, 4),
+    Info::new("AR", Register::AR, None, 4),
+    Info::new("DR", Register::DR, None, 4),
+    Info::new("PC", Register::PC, None, 4),
+    Info::new("OUTR", Register::OUTR, None, 4),
+    Info::new("ACC", Register::ACC, None, 4),
+    Info::new("R", Register::R, None, 4),
 ];
 
 impl RegInfo for Register {
@@ -65,7 +65,9 @@ impl Serialize for Register {
 impl InsnInfo for InsnWrapper {
     fn size(&self) -> Option<u16> {
         match self {
-            InsnWrapper::Op(Instruction::JMP | Instruction::JMPZ, ..) => Some(8),
+            InsnWrapper::Op(Instruction::JMP | Instruction::JMPZ | Instruction::CALL, ..) => {
+                Some(8)
+            }
             _ => None,
         }
     }
@@ -74,6 +76,8 @@ impl InsnInfo for InsnWrapper {
         match self {
             InsnWrapper::Op(Instruction::JMP, ..) => Some(JumpKind::Unconditional),
             InsnWrapper::Op(Instruction::JMPZ, ..) => Some(JumpKind::Conditional),
+            InsnWrapper::Op(Instruction::CALL, ..) => Some(JumpKind::Call),
+            InsnWrapper::NoOp(Instruction::RET) => Some(JumpKind::Return),
             _ => None,
         }
     }
