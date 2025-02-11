@@ -1,7 +1,12 @@
 use crate::emulator::{util::Register, Assembler, Emulator};
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    thread::sleep,
+    time::{Duration, Instant},
+};
 
 pub struct Debugger {
+    instructions_per_second: u32,
     assembler: Assembler,
     emulator: Emulator,
     breakpoints: HashMap<u32, bool>,
@@ -10,6 +15,7 @@ pub struct Debugger {
 impl Debugger {
     pub fn new(assembler: Assembler) -> Self {
         Self {
+            instructions_per_second: 5,
             emulator: Emulator::new(assembler.instructions()),
             breakpoints: HashMap::new(),
             assembler,
@@ -18,8 +24,23 @@ impl Debugger {
 
     /// Runs the loaded program until a breakpoint is hit or halted.
     pub fn start(&mut self) {
+        let time_per_instruction =
+            Duration::from_secs_f32(1.0 / self.instructions_per_second as f32);
+        let mut last_time = Instant::now();
+        let mut accumulated_time = Duration::ZERO;
+
         while !self.should_stop() {
-            self.emulator.cycle();
+            let now = Instant::now();
+            let elapsed = now.duration_since(last_time);
+            accumulated_time += elapsed;
+            last_time = now;
+
+            while accumulated_time >= time_per_instruction {
+                self.emulator.cycle();
+                accumulated_time -= time_per_instruction;
+            }
+
+            sleep(Duration::from_micros(500));
         }
     }
 

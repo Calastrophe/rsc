@@ -1,6 +1,6 @@
 mod debugger;
 mod emulator;
-mod interface;
+mod ui;
 
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
@@ -16,7 +16,7 @@ fn main() -> eframe::Result<()> {
     eframe::run_native(
         "interface",
         native_options,
-        Box::new(|cc| Ok(Box::new(interface::Interface::new(cc)))),
+        Box::new(|cc| Ok(Box::new(ui::Interface::new(cc)))),
     )
 }
 

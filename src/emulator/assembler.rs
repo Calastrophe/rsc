@@ -5,7 +5,7 @@ use std::collections::HashMap;
 pub struct Assembler {
     instructions: Vec<u32>,
     symbol_map: HashMap<String, u32>,
-    replaced: HashMap<u32, String>,
+    symbol_references: HashMap<u32, String>,
 }
 
 impl Assembler {
@@ -75,7 +75,7 @@ impl Assembler {
         }
 
         // Replace the placeholders in our bytecode with the address of their variable from the symbol table.
-        let replaced: HashMap<u32, String> = to_replace
+        let symbol_references: HashMap<u32, String> = to_replace
             .into_iter()
             .map(|(idx, var_name)| {
                 // Identify if the variable name exists in our symbol map, error if not.
@@ -91,7 +91,7 @@ impl Assembler {
         Ok(Assembler {
             instructions,
             symbol_map,
-            replaced,
+            symbol_references,
         })
     }
 
@@ -103,7 +103,11 @@ impl Assembler {
         &self.symbol_map
     }
 
-    pub fn replaced(&self) -> &HashMap<u32, String> {
-        &self.replaced
+    pub fn symbol_references(&self) -> &HashMap<u32, String> {
+        &self.symbol_references
+    }
+
+    pub fn bytecode(&self) -> Vec<u32> {
+        todo!()
     }
 }
