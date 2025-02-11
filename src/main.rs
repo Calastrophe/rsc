@@ -1,6 +1,6 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
+mod debugger;
 mod emulator;
-mod frontend;
+mod interface;
 
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
@@ -16,7 +16,7 @@ fn main() -> eframe::Result<()> {
     eframe::run_native(
         "interface",
         native_options,
-        Box::new(|cc| Box::new(frontend::Interface::new(cc))),
+        Box::new(|cc| Ok(Box::new(interface::Interface::new(cc)))),
     )
 }
 
@@ -33,7 +33,7 @@ fn main() {
             .start(
                 "interface", // hardcode it
                 web_options,
-                Box::new(|cc| Box::new(frontend::Interface::new(cc))),
+                Box::new(|cc| Ok(Box::new(frontend::Interface::new(cc)))),
             )
             .await
             .expect("failed to start eframe");
