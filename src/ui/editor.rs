@@ -1,4 +1,4 @@
-const DEFAULT_ROWS: usize = 30;
+const DEFAULT_ROWS: usize = 100;
 const FONT_SIZE: f32 = 12.0;
 
 use super::Component;
@@ -33,13 +33,7 @@ impl Component for Editor {
 
 impl Editor {
     fn numbering(&self, ui: &mut egui::Ui, code: &str) {
-        let total = if code.ends_with('\n') || code.is_empty() {
-            code.lines().count() + 1
-        } else {
-            code.lines().count()
-        }
-        .max(DEFAULT_ROWS);
-
+        let total = code.lines().count();
         let max_ident = total.to_string().len();
         let mut counter = (1..=total)
             .map(|i| {
