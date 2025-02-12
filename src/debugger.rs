@@ -7,7 +7,6 @@ use std::{
 
 pub struct Debugger {
     instructions_per_second: u32,
-    assembler: Assembler,
     emulator: Emulator,
     breakpoints: HashMap<u32, bool>,
 }
@@ -18,7 +17,6 @@ impl Debugger {
             instructions_per_second: 5,
             emulator: Emulator::new(assembler.instructions()),
             breakpoints: HashMap::new(),
-            assembler,
         }
     }
 
