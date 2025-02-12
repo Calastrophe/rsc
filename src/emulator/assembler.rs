@@ -59,7 +59,7 @@ impl Assembler {
                         });
 
                         // Add the current position in the bytecode to a map with the variable name.
-                        to_replace.insert(instructions.len() as u32, operand.to_owned());
+                        to_replace.insert(instructions.len() as u32, (ln, operand.to_owned()));
 
                         // Insert a placeholder that is to be replaced.
                         instructions.push(0);
@@ -101,7 +101,7 @@ impl Assembler {
         // Replace the placeholders in our bytecode with the address of their variable from the symbol table.
         let symbol_references: HashMap<u32, String> = to_replace
             .into_iter()
-            .filter_map(|(idx, var_name)| {
+            .filter_map(|(idx, (ln, var_name))| {
                 // Identify if the variable name exists in our symbol map, error if not.
                 match symbol_map.get(&var_name) {
                     Some(symbol) => {
@@ -109,7 +109,7 @@ impl Assembler {
                         Some((idx, var_name))
                     }
                     None => {
-                        errors.push(Error::UnknownVariable(var_name.to_string()));
+                        errors.push(Error::UnknownVariable(var_name.to_string(), ln));
                         None
                     }
                 }

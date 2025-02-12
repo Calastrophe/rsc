@@ -8,8 +8,8 @@ pub enum Error {
     ExpectedOperand(String, usize),
     #[error("Invalid operand defined for variable '{0}' on line {1}")]
     InvalidOperand(String, usize),
-    #[error("Unknown variable '{0}' used as operand")]
-    UnknownVariable(String),
+    #[error("Unknown variable '{0}' used as operand on line {1}")]
+    UnknownVariable(String, usize),
 }
 
 /// All registers in the RSC architecture.
