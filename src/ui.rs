@@ -41,9 +41,7 @@ impl Interface {
 
 impl eframe::App for Interface {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::TopBottomPanel(ui, |ui| { 
-            ui.button("Test");
-        })
+        todo!();
 
 
 
