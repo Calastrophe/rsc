@@ -6,6 +6,10 @@ use super::Component;
 #[derive(Default)]
 pub struct Editor {
     code: String,
+
+    // The bytecode viewer utilizes this to know which line to highlight.
+    pub selected_line: usize,
+    prev_cursor_pos: usize,
 }
 
 impl Component for Editor {
@@ -18,14 +22,23 @@ impl Component for Editor {
                 self.numbering(h, &self.code);
 
                 let available_width = h.available_width();
-                h.add(
-                    egui::TextEdit::multiline(&mut self.code)
-                        .font(egui::TextStyle::Monospace)
-                        .code_editor()
-                        .desired_rows(DEFAULT_ROWS)
-                        .lock_focus(true)
-                        .desired_width(available_width - (available_width / 4.0)),
-                );
+                let output = egui::TextEdit::multiline(&mut self.code)
+                    .font(egui::TextStyle::Monospace)
+                    .code_editor()
+                    .desired_rows(DEFAULT_ROWS)
+                    .lock_focus(true)
+                    .desired_width(available_width - (available_width / 4.0))
+                    .show(h);
+
+                // Keep track of the current line being selected, only update when changed.
+                if let Some(cursor_range) = output.cursor_range {
+                    let cursor_pos = cursor_range.primary.ccursor.index;
+
+                    if cursor_pos != self.prev_cursor_pos {
+                        self.selected_line = self.code[..cursor_pos].matches('\n').count();
+                        self.prev_cursor_pos = cursor_pos;
+                    }
+                }
             });
         });
     }
