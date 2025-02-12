@@ -13,16 +13,6 @@ use editor::Editor;
 use top::Top;
 use variable_viewer::VariableViewer;
 
-#[macro_export]
-macro_rules! impl_component_name {
-    // Remove the type parameter and use impl_type instead
-    () => {
-        fn name(&self) -> &'static str {
-            std::any::type_name::<Self>()
-        }
-    };
-}
-
 pub trait Component {
     fn name(&self) -> &'static str;
     fn show(&mut self, ui: &mut Ui);

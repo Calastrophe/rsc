@@ -1,18 +1,13 @@
-use crate::impl_component_name;
 use super::Component;
 
-
-
 #[derive(Default)]
-pub struct CpuState { 
-
-}
-
+pub struct CpuState {}
 
 impl Component for CpuState {
-    impl_component_name!();
+    fn name(&self) -> &'static str {
+        "CpuState"
+    }
 
-    
     fn show(&mut self, ui: &mut egui::Ui) {
         ui.label(self.name());
     }
