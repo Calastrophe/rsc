@@ -3,17 +3,17 @@ use super::Component;
 
 
 
-
-struct Top { 
+#[derive(Default)]
+pub struct Top { 
 
 }
 
-
+ 
 impl Component for Top {
     impl_component_name!();
 
     
     fn show(&mut self, ui: &mut egui::Ui) {
-        todo!()
+        ui.label(self.name());
     }
 }

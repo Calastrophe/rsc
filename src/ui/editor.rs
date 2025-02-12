@@ -3,8 +3,8 @@ use super::Component;
 
 
 
-
-struct Editor { 
+#[derive(Default)]
+pub struct Editor { 
 
 }
 
@@ -14,6 +14,6 @@ impl Component for Editor {
 
     
     fn show(&mut self, ui: &mut egui::Ui) {
-        todo!()
+        ui.label(self.name());
     }
 }

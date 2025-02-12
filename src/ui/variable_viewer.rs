@@ -3,8 +3,8 @@ use super::Component;
 
 
 
-
-struct VariableViewer { 
+#[derive(Default)]
+pub struct VariableViewer { 
 
 }
 
@@ -14,6 +14,6 @@ impl Component for VariableViewer {
 
     
     fn show(&mut self, ui: &mut egui::Ui) {
-        todo!()
+        ui.label(self.name());
     }
 }

@@ -2,9 +2,8 @@ use crate::impl_component_name;
 use super::Component;
 
 
-
-
-struct BytecodeViewer { 
+#[derive(Default)]
+pub struct BytecodeViewer { 
    
 }
 
@@ -14,6 +13,6 @@ impl Component for BytecodeViewer {
 
     
     fn show(&mut self, ui: &mut egui::Ui) {
-        todo!()
+        ui.label(self.name());
     }
 }

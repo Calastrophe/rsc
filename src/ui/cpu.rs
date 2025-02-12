@@ -3,17 +3,17 @@ use super::Component;
 
 
 
-
-struct Cpu { 
+#[derive(Default)]
+pub struct CpuState { 
 
 }
 
 
-impl Component for Cpu {
+impl Component for CpuState {
     impl_component_name!();
 
     
     fn show(&mut self, ui: &mut egui::Ui) {
-        todo!()
+        ui.label(self.name());
     }
 }
