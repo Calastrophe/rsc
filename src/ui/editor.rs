@@ -1,7 +1,7 @@
+use crate::debugger::Debugger;
+
 const DEFAULT_ROWS: usize = 100;
 const FONT_SIZE: f32 = 12.0;
-
-use super::Component;
 
 #[derive(Default)]
 pub struct Editor {
@@ -12,11 +12,13 @@ pub struct Editor {
     prev_cursor_pos: usize,
 }
 
-impl Component for Editor {
+impl Editor {
     fn name(&self) -> &'static str {
         "Editor"
     }
-    fn show(&mut self, ui: &mut egui::Ui) {
+    pub fn show(&mut self, ui: &mut egui::Ui, _debugger: &mut Option<Debugger>) {
+        // TODO: Draw an arrow for where the program counter is and breakpoint functionality
+
         egui::ScrollArea::vertical().show(ui, |ui| {
             ui.horizontal_top(|h| {
                 self.numbering(h, &self.code);
@@ -27,7 +29,8 @@ impl Component for Editor {
                     .code_editor()
                     .desired_rows(DEFAULT_ROWS)
                     .lock_focus(true)
-                    .desired_width(available_width - (available_width / 4.0))
+                    // TODO: Subtract the available width by the difference taken by the line numbering.
+                    .desired_width(available_width - (available_width / 23.0))
                     .show(h);
 
                 // Keep track of the current line being selected, only update when changed.

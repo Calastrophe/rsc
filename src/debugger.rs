@@ -12,10 +12,10 @@ pub struct Debugger {
 }
 
 impl Debugger {
-    pub fn new(assembler: Assembler) -> Self {
+    pub fn new(instructions: &[u32]) -> Self {
         Self {
             instructions_per_second: 5,
-            emulator: Emulator::new(assembler.instructions()),
+            emulator: Emulator::new(instructions),
             breakpoints: HashMap::new(),
         }
     }

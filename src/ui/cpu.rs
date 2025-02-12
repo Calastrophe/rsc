@@ -1,14 +1,14 @@
-use super::Component;
+use crate::debugger::Debugger;
 
 #[derive(Default)]
 pub struct CpuState {}
 
-impl Component for CpuState {
+impl CpuState {
     fn name(&self) -> &'static str {
         "CpuState"
     }
 
-    fn show(&mut self, ui: &mut egui::Ui) {
+    pub fn show(&mut self, ui: &mut egui::Ui, _debugger: &Option<Debugger>) {
         ui.label(self.name());
     }
 }

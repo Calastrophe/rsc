@@ -1,14 +1,19 @@
-use super::Component;
+use crate::{debugger::Debugger, emulator::Assembler};
 
 #[derive(Default)]
 pub struct Top {}
 
-impl Component for Top {
+impl Top {
     fn name(&self) -> &'static str {
         "Top"
     }
 
-    fn show(&mut self, ui: &mut egui::Ui) {
+    pub fn show(
+        &mut self,
+        ui: &mut egui::Ui,
+        _debugger: &mut Option<Debugger>,
+        _assembler: &mut Option<Assembler>,
+    ) {
         ui.label(self.name());
     }
 }

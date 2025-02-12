@@ -1,14 +1,19 @@
-use super::Component;
+use crate::{debugger::Debugger, emulator::Assembler};
 
 #[derive(Default)]
 pub struct VariableViewer {}
 
-impl Component for VariableViewer {
+impl VariableViewer {
     fn name(&self) -> &'static str {
         "VariableViewer"
     }
 
-    fn show(&mut self, ui: &mut egui::Ui) {
+    pub fn show(
+        &mut self,
+        ui: &mut egui::Ui,
+        _debugger: &Option<Debugger>,
+        _assembler: &Option<Assembler>,
+    ) {
         ui.label(self.name());
     }
 }
