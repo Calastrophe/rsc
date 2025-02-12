@@ -2,10 +2,6 @@ mod debugger;
 mod emulator;
 mod ui;
 
-
-
-
-
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result<()> {
