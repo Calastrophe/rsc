@@ -10,7 +10,7 @@ thiserror = "1.0.40"
 egui = "0.30"
 eframe = { version = "0.30", default-features = false, features = [
     "default_fonts",
-    "wayland",
+    "x11",
     "glow",
 ] }
 log = "0.4"
