@@ -97,6 +97,16 @@ impl Debugger {
         })
     }
 
+    /// A helper function to easily read registers from the underlying emulator.
+    pub fn read_reg(&self, reg: Register) -> u32 {
+        self.emulator.registers.get(reg)
+    }
+
+    /// A helper function to easily read memory from the underlying emulator.
+    pub fn read_mem(&self, addr: u32) -> u32 {
+        self.emulator.memory.get(addr)
+    }
+
     /// Determines if the debugger should yield execution.
     pub fn should_stop(&self) -> bool {
         self.emulator.halted() || self.query(self.emulator.registers.get(Register::PC))
