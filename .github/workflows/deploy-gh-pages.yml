@@ -55,7 +55,7 @@ jobs:
     # deployment before pushing to main.)
     # Caution: GitHub's parsing is weird around multiline expressions so just don't.
     # https://github.community/t/how-to-write-multi-line-condition-in-if/128477
-    if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/pages-alt') }}
+    # if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/pages-alt') }}
 
     steps:
 
