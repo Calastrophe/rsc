@@ -5,10 +5,9 @@ const FONT_SIZE: f32 = 12.0;
 
 #[derive(Default)]
 pub struct Editor {
-    code: String,
-
-    // The bytecode viewer utilizes this to know which line to highlight.
+    pub code: String,
     pub selected_line: usize,
+
     prev_cursor_pos: usize,
 }
 
