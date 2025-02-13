@@ -12,8 +12,9 @@ impl Top {
         &mut self,
         ui: &mut egui::Ui,
         debugger: &mut Option<Debugger>,
-        _assembler: &mut Option<Assembler>,
-        _code: &str,
+        
+        assembler: &mut Option<Assembler>,
+        code: &str,
     ) {
 
 
@@ -29,11 +30,9 @@ impl Top {
 
                 );
             } else { 
-
-                ui.button("Compile");
-                ui.button("Compile");
-                ui.button("Compile");
-                ui.button("Compile");
+                if ui.button("Assemble").clicked() { 
+                    assembler.replace(Assembler::parse(code.to_string()));
+                }
 
             }
 
