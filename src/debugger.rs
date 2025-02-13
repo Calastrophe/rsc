@@ -6,7 +6,7 @@ use std::{
 };
 
 pub struct Debugger {
-    instructions_per_second: u32,
+    pub instructions_per_second: u32,
     emulator: Emulator,
     breakpoints: HashMap<u32, bool>,
 }
