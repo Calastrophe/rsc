@@ -3,7 +3,6 @@ name: Deploy GitHub Pages
 on:
   push:
     branches: [main]
-
   workflow_dispatch:
 
 permissions:
@@ -22,7 +21,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Restore cache
-        uses: actions/cache@v4
+        uses: actions/cache@v
         with:
           path: |
             ~/.cargo/bin
@@ -39,22 +38,41 @@ jobs:
       - name: Build the Rust WASM app and all of its assets
         run: trunk build --public-url ${{ github.event.repository.name }}
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Save wasm dist artifact
+        uses: actions/upload-artifact@v4
         with:
-          path: './dist'
+          name: rsc-dist
+          path: rsc/dist
+          if-no-files-found: error
 
   deploy:
     needs: build
-
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    # Do this only if we are pushing to main, not to pull requests.
+    # (Or if we're on a special 'pages-alt' branch, so we can experiment with
+    # deployment before pushing to main.)
+    # Caution: GitHub's parsing is weird around multiline expressions so just don't.
+    # https://github.community/t/how-to-write-multi-line-condition-in-if/128477
+    if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/pages-alt') }}
+
     steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+
+    - name: Download wasm dist artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: rsc-dist
+        path: dist-for-deploy
+
+    - name: Deploy to GitHub Pages
+      uses: crazy-max/ghaction-github-pages@v4
+      with:
+        repo: calastrophe/rsc
+        target_branch: gh-pages
+        build_dir: dist-for-deploy
+        keep_history: false
+        jekyll: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.API_TOKEN_GITHUB_DEMO }}
