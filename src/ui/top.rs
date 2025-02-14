@@ -68,7 +68,7 @@ impl Top {
 
                 ui.add_enabled_ui(step_backward_enabled, |ui| {
                     if ui
-                        .button(egui::RichText::new("⬅️").font(egui::FontId::proportional(20.0)))
+                        .button(egui::RichText::new("⬅").font(egui::FontId::proportional(20.0)))
                         .on_hover_text("Step Backward")
                         .on_disabled_hover_text("Step Backward")
                         .clicked()
