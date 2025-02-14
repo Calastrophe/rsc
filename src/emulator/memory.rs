@@ -19,7 +19,7 @@ impl<T: Copy> TimelessEngine<T> {
         self.step_counter += 1
     }
 
-    /// Steps backward one step in time, only drains the contents of the vector holding the changes.
+    /// Steps backward one step in time, only drains the contents of the vector holding the previous step's changes.
     pub fn step_backward(&mut self) -> Option<std::vec::Drain<'_, T>> {
         if self.step_counter > 0 {
             self.step_counter -= 1;
@@ -72,12 +72,14 @@ impl Registers {
         self.engine.step_forward();
     }
 
-    pub fn step_backward(&mut self) {
-        if let Some(changes) = self.engine.step_backward() {
+    // Steps backwards and indicates if any changes were undone.
+    pub fn step_backward(&mut self) -> bool {
+        self.engine.step_backward().map_or(false, |changes| {
             for (reg, val) in changes.rev() {
                 self.registers[reg as usize] = val
             }
-        }
+            true
+        })
     }
 }
 
@@ -118,14 +120,16 @@ impl Memory {
         self.engine.step_forward()
     }
 
-    pub fn step_backward(&mut self) {
-        if let Some(changes) = self.engine.step_backward() {
+    // Steps backwards and indicates if any changes were undone.
+    pub fn step_backward(&mut self) -> bool {
+        self.engine.step_backward().map_or(false, |changes| {
             for (address, val) in changes.rev() {
                 self.underlying
                     .entry(address)
                     .and_modify(|v| *v = val)
                     .or_insert(val);
             }
-        }
+            true
+        })
     }
 }

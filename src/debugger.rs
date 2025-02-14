@@ -5,23 +5,40 @@ use std::{
     time::{Duration, Instant},
 };
 
+pub enum ExecutionState {
+    Start,
+    Halted,
+    Paused,
+    Running,
+    Stepping,
+    BreakpointHit,
+}
+
 pub struct Debugger {
     pub instructions_per_second: u32,
-    emulator: Emulator,
+    pub execution_state: ExecutionState,
     breakpoints: HashMap<u32, bool>,
+    emulator: Emulator,
 }
 
 impl Debugger {
     pub fn new(instructions: &[u32]) -> Self {
         Self {
+            execution_state: ExecutionState::Start,
             instructions_per_second: 5,
             emulator: Emulator::new(instructions),
             breakpoints: HashMap::new(),
         }
     }
 
+    fn set_execution_state(&mut self, state: ExecutionState) {
+        self.execution_state = state;
+    }
+
     /// Runs the loaded program until a breakpoint is hit or halted.
-    pub fn start(&mut self) {
+    pub fn run(&mut self) {
+        self.set_execution_state(ExecutionState::Running);
+
         let time_per_instruction =
             Duration::from_secs_f32(1.0 / self.instructions_per_second as f32);
         let mut last_time = Instant::now();
@@ -42,15 +59,19 @@ impl Debugger {
         }
     }
 
-    /// Used to step over a breakpoint without disabling it.
+    /// Steps over a breakpoint without disabling it.
     pub fn step_over(&mut self) {
-        if !self.emulator.halted() {
+        self.set_execution_state(ExecutionState::Stepping);
+
+        if !self.halted() {
             self.emulator.cycle();
         }
     }
 
     /// Steps forward through execution path by 'steps' amount at a time.
     pub fn stepi(&mut self, steps: usize) {
+        self.set_execution_state(ExecutionState::Stepping);
+
         for _ in 0..steps {
             if !self.should_stop() {
                 self.emulator.cycle();
@@ -60,8 +81,23 @@ impl Debugger {
 
     /// Traces back execution path by 'steps' amount at a time.
     pub fn backi(&mut self, steps: usize) {
+        self.set_execution_state(ExecutionState::Stepping);
+
         for _ in 0..steps {
-            self.emulator.registers.step_backward();
+            if !self.emulator.registers.step_backward() {
+                self.set_execution_state(ExecutionState::Start);
+            }
+            self.emulator.memory.step_backward();
+        }
+    }
+
+    /// Traces back execution until we arrive back at the start.
+    pub fn restart(&mut self) {
+        loop {
+            if !self.emulator.registers.step_backward() {
+                self.set_execution_state(ExecutionState::Start);
+                return;
+            }
             self.emulator.memory.step_backward();
         }
     }
@@ -76,9 +112,24 @@ impl Debugger {
         self.breakpoints.remove(&address).is_some()
     }
 
-    /// Returns if a given address is a breakpoint and is enabled
-    pub fn query(&self, address: u32) -> bool {
-        self.breakpoints.get(&address).is_some_and(|v| *v)
+    /// Indicates whether the underlying emulator is halted.
+    pub fn halted(&mut self) -> bool {
+        if self.emulator.halted() {
+            self.set_execution_state(ExecutionState::Halted);
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Returns if a given address is a breakpoint and is enabled.
+    pub fn query(&mut self, address: u32) -> bool {
+        if self.breakpoints.get(&address).is_some_and(|v| *v) {
+            self.set_execution_state(ExecutionState::BreakpointHit);
+            true
+        } else {
+            false
+        }
     }
 
     /// Enables a given breakpoint, returns false if the breakpoint does not exist.
@@ -108,7 +159,7 @@ impl Debugger {
     }
 
     /// Determines if the debugger should yield execution.
-    pub fn should_stop(&self) -> bool {
-        self.emulator.halted() || self.query(self.emulator.registers.get(Register::PC))
+    pub fn should_stop(&mut self) -> bool {
+        self.halted() || self.query(self.emulator.registers.get(Register::PC))
     }
 }

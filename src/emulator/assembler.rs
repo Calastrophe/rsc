@@ -136,4 +136,8 @@ impl Assembler {
     pub fn symbol_references(&self) -> &HashMap<u32, String> {
         &self.symbol_references
     }
+
+    pub fn errors(&self) -> &Vec<Error> {
+        &self.errors
+    }
 }
