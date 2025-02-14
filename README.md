@@ -3,4 +3,4 @@ rsc is a *work-in-progress* emulator for the RSC architecture with a web based i
 
 The front end portion is made possible by [egui](https://github.com/emilk/egui).
 
-
+You can view it on the web [here](https://calastrophe.github.io/rsc/)

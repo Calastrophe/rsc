@@ -36,7 +36,12 @@ impl Interface {
 impl eframe::App for Interface {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
-            self.top.show(ui, &mut self.debugger, &mut self.assembler, &self.editor.code);
+            self.top.show(
+                ui,
+                &mut self.debugger,
+                &mut self.assembler,
+                &self.editor.code,
+            );
         });
 
         let available_width = ctx.available_rect().width();

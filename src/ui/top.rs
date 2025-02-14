@@ -15,6 +15,7 @@ impl Top {
         &mut self,
         ui: &mut egui::Ui,
         debugger: &mut Option<Debugger>,
+<<<<<<< HEAD
         assembler: &mut Option<Assembler>,
         code: &str,
     ) {
@@ -107,6 +108,27 @@ impl Top {
                     1..=20,
                 ));
             }
+=======
+
+        assembler: &mut Option<Assembler>,
+        code: &str,
+    ) {
+        ui.vertical_centered(|ui| {
+            ui.horizontal(|ui| {
+                if let Some(debugger) = debugger {
+                    ui.button(""); // pause
+                    ui.button("▶️"); //
+                    ui.add(
+                        egui::Slider::new::<u32>(&mut debugger.instructions_per_second, 1..=1000)
+                            .text("IPS"),
+                    );
+                } else {
+                    if ui.button("Assemble").clicked() {
+                        assembler.replace(Assembler::parse(code.to_string()));
+                    }
+                }
+            });
+>>>>>>> 68b65d3424fca644b249f9a6163771114efba137
         });
     }
 }

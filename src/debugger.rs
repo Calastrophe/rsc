@@ -152,7 +152,7 @@ impl Debugger {
     pub fn read_reg(&self, reg: Register) -> u32 {
         self.emulator.registers.get(reg)
     }
-
+//
     /// A helper function to easily read memory from the underlying emulator.
     pub fn read_mem(&self, addr: u32) -> u32 {
         self.emulator.memory.get(addr)
