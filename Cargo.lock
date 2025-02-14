@@ -312,15 +312,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ci_info"
-version = "0.10.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24f638c70e8c5753795cc9a8c07c44da91554a09e4cf11a7326e8161b0a3c45e"
-dependencies = [
- "envmnt",
-]
-
-[[package]]
 name = "clipboard-win"
 version = "5.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -615,16 +606,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "envmnt"
-version = "0.8.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2d328fc287c61314c4a61af7cfdcbd7e678e39778488c7cb13ec133ce0f4059"
-dependencies = [
- "fsio",
- "indexmap 1.9.3",
-]
-
-[[package]]
 name = "epaint"
 version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -732,12 +713,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fsio"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c1fd087255f739f4f1aeea69f11b72f8080e9c2e7645cd06955dad4a178a49e3"
-
-[[package]]
 name = "gdk-pixbuf-sys"
 version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -775,15 +750,6 @@ checksum = "0176e0459c2e4a1fe232f984bca6890e681076abb9934f6cea7c326f3fc47818"
 dependencies = [
  "libc",
  "windows-targets 0.48.5",
-]
-
-[[package]]
-name = "getopts"
-version = "0.2.21"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14dbbfd5c71d70241ecf9e6f13737f7b5ce823821063188d7e46c41d371eebd5"
-dependencies = [
- "unicode-width",
 ]
 
 [[package]]
@@ -947,7 +913,7 @@ checksum = "dcf29e94d6d243368b7a56caa16bc213e4f9f8ed38c4d9557069527b5d5281ca"
 dependencies = [
  "bitflags 2.6.0",
  "gpu-descriptor-types",
- "hashbrown 0.15.2",
+ "hashbrown",
 ]
 
 [[package]]
@@ -976,12 +942,6 @@ dependencies = [
  "pango-sys",
  "system-deps",
 ]
-
-[[package]]
-name = "hashbrown"
-version = "0.12.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
 
 [[package]]
 name = "hashbrown"
@@ -1178,22 +1138,12 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "1.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd070e393353796e801d209ad339e89596eb4c8d430d18ede6a1cced8fafbd99"
-dependencies = [
- "autocfg",
- "hashbrown 0.12.3",
-]
-
-[[package]]
-name = "indexmap"
 version = "2.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "62f822373a4fe84d4bb149bf54e584a7f4abec90e072ed49cda0edea5b95471f"
 dependencies = [
  "equivalent",
- "hashbrown 0.15.2",
+ "hashbrown",
 ]
 
 [[package]]
@@ -1396,7 +1346,7 @@ dependencies = [
  "cfg_aliases 0.1.1",
  "codespan-reporting",
  "hexf-parse",
- "indexmap 2.7.0",
+ "indexmap",
  "log",
  "rustc-hash",
  "spirv",
@@ -1443,12 +1393,6 @@ checksum = "ee6cda3051665f1fb8d9e08fc35c96d5a244fb1be711a03b71118828afc9a873"
 dependencies = [
  "jni-sys",
 ]
-
-[[package]]
-name = "nias"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab250442c86f1850815b5d268639dff018c0627022bc1940eb2d642ca1ce12f0"
 
 [[package]]
 name = "nohash-hasher"
@@ -1990,7 +1934,6 @@ dependencies = [
  "js-sys",
  "log",
  "rfd",
- "rusty-hook",
  "thiserror",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -2014,18 +1957,6 @@ dependencies = [
  "libc",
  "linux-raw-sys",
  "windows-sys 0.59.0",
-]
-
-[[package]]
-name = "rusty-hook"
-version = "0.11.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96cee9be61be7e1cbadd851e58ed7449c29c620f00b23df937cb9cbc04ac21a3"
-dependencies = [
- "ci_info",
- "getopts",
- "nias",
- "toml 0.5.11",
 ]
 
 [[package]]
@@ -2211,7 +2142,7 @@ dependencies = [
  "cfg-expr",
  "heck",
  "pkg-config",
- "toml 0.8.19",
+ "toml",
  "version-compare",
 ]
 
@@ -2262,15 +2193,6 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "0.5.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4f7f0dd8d50a853a531c426359045b1998f04219d88799810762cd4ad314234"
-dependencies = [
- "serde",
-]
-
-[[package]]
-name = "toml"
 version = "0.8.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a1ed1f98e3fdc28d6d910e6737ae6ab1a93bf1985935a1193e68f93eeb68d24e"
@@ -2296,7 +2218,7 @@ version = "0.22.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4ae48d6208a266e853d946088ed816055e556cc6028c5e8e2b84d9fa5dd7c7f5"
 dependencies = [
- "indexmap 2.7.0",
+ "indexmap",
  "serde",
  "serde_spanned",
  "toml_datetime",
@@ -2639,7 +2561,7 @@ dependencies = [
  "bitflags 2.6.0",
  "cfg_aliases 0.1.1",
  "document-features",
- "indexmap 2.7.0",
+ "indexmap",
  "log",
  "naga",
  "once_cell",

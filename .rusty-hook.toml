@@ -1,5 +1,0 @@
-[hooks]
-pre-commit = "trunk build"
-
-[logging]
-verbose = true

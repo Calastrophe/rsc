@@ -58,20 +58,19 @@ jobs:
     # if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/pages-alt') }}
 
     steps:
+      - name: Download wasm dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: rsc-dist
+          path: dist-for-deploy
 
-    - name: Download wasm dist artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: rsc-dist
-        path: dist-for-deploy
-
-    - name: Deploy to GitHub Pages
-      uses: crazy-max/ghaction-github-pages@v4
-      with:
-        repo: calastrophe/rsc
-        target_branch: gh-pages
-        build_dir: dist-for-deploy
-        keep_history: false
-        jekyll: false
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Deploy to GitHub Pages
+        uses: crazy-max/ghaction-github-pages@v4
+        with:
+          repo: calastrophe/rsc
+          target_branch: gh-pages
+          build_dir: dist-for-deploy
+          keep_history: false
+          jekyll: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

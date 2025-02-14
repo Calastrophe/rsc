@@ -17,9 +17,6 @@ log = "0.4"
 rfd = "0.12.1"
 cfg-if = "1.0.0"
 
-[dev-dependencies]
-rusty-hook = "^0.11.2"
-
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 env_logger = "0.10"
