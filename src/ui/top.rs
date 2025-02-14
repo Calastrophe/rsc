@@ -1,7 +1,11 @@
+use egui::Ui;
+
 use crate::{
     debugger::{Debugger, ExecutionState},
     emulator::Assembler,
 };
+
+const FONT_SIZE: f32 = 17.0;
 
 #[derive(Default)]
 pub struct Top {}
@@ -18,17 +22,20 @@ impl Top {
         assembler: &mut Option<Assembler>,
         code: &str,
     ) {
+        ui.add_space(1.0);
         ui.horizontal(|ui| {
-            if ui.button("Assemble").clicked() {
+            if ui
+                .button(egui::RichText::new("🔧").font(egui::FontId::monospace(FONT_SIZE)))
+                .on_hover_text("Assemble")
+                .clicked()
+            {
                 let new_assembler = Assembler::parse(code.to_string());
-
                 // TODO: Spawn the debugger on another thread.
                 if new_assembler.errors().is_empty() {
                     debugger.replace(Debugger::new(new_assembler.instructions()));
                 }
-
                 assembler.replace(new_assembler);
-            }
+            };
 
             if let Some(debugger) = debugger {
                 let (
@@ -50,7 +57,9 @@ impl Top {
 
                 ui.add_enabled_ui(pause_enabled, |ui| {
                     if ui
-                        .button(egui::RichText::new("⏸").font(egui::FontId::proportional(20.0)))
+                        .button(
+                            egui::RichText::new("⏸").font(egui::FontId::proportional(FONT_SIZE)),
+                        )
                         .on_hover_text("Pause")
                         .on_disabled_hover_text("Pause")
                         .clicked()
@@ -59,7 +68,9 @@ impl Top {
 
                 ui.add_enabled_ui(run_enabled, |ui| {
                     if ui
-                        .button(egui::RichText::new("▶").font(egui::FontId::proportional(20.0)))
+                        .button(
+                            egui::RichText::new("▶").font(egui::FontId::proportional(FONT_SIZE)),
+                        )
                         .on_hover_text("Run")
                         .on_disabled_hover_text("Run")
                         .clicked()
@@ -68,7 +79,9 @@ impl Top {
 
                 ui.add_enabled_ui(step_backward_enabled, |ui| {
                     if ui
-                        .button(egui::RichText::new("⬅").font(egui::FontId::proportional(20.0)))
+                        .button(
+                            egui::RichText::new("⬅").font(egui::FontId::proportional(FONT_SIZE)),
+                        )
                         .on_hover_text("Step Backward")
                         .on_disabled_hover_text("Step Backward")
                         .clicked()
@@ -77,7 +90,9 @@ impl Top {
 
                 ui.add_enabled_ui(step_forward_enabled, |ui| {
                     if ui
-                        .button(egui::RichText::new("➡").font(egui::FontId::proportional(20.0)))
+                        .button(
+                            egui::RichText::new("➡").font(egui::FontId::proportional(FONT_SIZE)),
+                        )
                         .on_hover_text("Step Forward")
                         .on_disabled_hover_text("Step Forward")
                         .clicked()
@@ -86,7 +101,9 @@ impl Top {
 
                 ui.add_enabled_ui(step_over_enabled, |ui| {
                     if ui
-                        .button(egui::RichText::new("⤵").font(egui::FontId::proportional(20.0)))
+                        .button(
+                            egui::RichText::new("⤵").font(egui::FontId::proportional(FONT_SIZE)),
+                        )
                         .on_hover_text("Step Over")
                         .on_disabled_hover_text("Step Over")
                         .clicked()
@@ -95,18 +112,21 @@ impl Top {
 
                 ui.add_enabled_ui(restart_enabled, |ui| {
                     if ui
-                        .button(egui::RichText::new("🔄").font(egui::FontId::proportional(20.0)))
+                        .button(
+                            egui::RichText::new("🔄").font(egui::FontId::proportional(FONT_SIZE)),
+                        )
                         .on_hover_text("Restart")
                         .on_disabled_hover_text("Restart")
                         .clicked()
                     {};
                 });
 
-                ui.add(egui::Slider::new::<u32>(
-                    &mut debugger.instructions_per_second,
-                    1..=20,
-                ));
+                ui.add(
+                    egui::Slider::new::<u32>(&mut debugger.instructions_per_second, 1..=20)
+                        .text("IPS"),
+                );
             }
         });
+        ui.add_space(1.0);
     }
 }
