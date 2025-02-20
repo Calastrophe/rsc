@@ -1,47 +1,47 @@
 use super::util::Register;
-use std::collections::HashMap;
 
-pub struct TimelessEngine<T: Copy> {
-    step_counter: usize,
-    changes: HashMap<usize, Vec<T>>,
+struct Change(usize, u32);
+
+pub struct TimelessEngine {
+    time_step: usize,
+    changes: Vec<Vec<Change>>,
 }
 
-impl<T: Copy> TimelessEngine<T> {
+impl TimelessEngine {
     pub fn new() -> Self {
         TimelessEngine {
-            step_counter: 0,
-            changes: HashMap::new(),
+            time_step: 0,
+            changes: vec![vec![]],
         }
     }
 
     /// Increases our current step in time by 1.
     pub fn step_forward(&mut self) {
-        self.step_counter += 1
+        self.time_step += 1;
+
+        if self.changes.get(self.time_step).is_none() {
+            self.changes.push(Vec::new())
+        }
     }
 
     /// Steps backward one step in time, only drains the contents of the vector holding the previous step's changes.
-    pub fn step_backward(&mut self) -> Option<std::vec::Drain<'_, T>> {
-        if self.step_counter > 0 {
-            self.step_counter -= 1;
+    pub fn step_backward(&mut self) -> Option<std::vec::Drain<'_, Change>> {
+        if self.time_step > 0 {
+            self.time_step -= 1;
         }
 
-        self.changes
-            .get_mut(&self.step_counter)
-            .map(|v| v.drain(..))
+        self.changes.get_mut(self.time_step).map(|v| v.drain(..))
     }
 
     /// Adds a change to the existing vector of changes or creates a new one for the current time step.
-    pub fn add_change(&mut self, c: T) {
-        self.changes
-            .entry(self.step_counter)
-            .and_modify(|v| v.push(c))
-            .or_insert(vec![c]);
+    pub fn add_change(&mut self, idx: usize, value: u32) {
+        self.changes[self.time_step].push(Change(idx, value));
     }
 }
 
 pub struct Registers {
     registers: [u32; 9],
-    engine: TimelessEngine<(Register, u32)>,
+    engine: TimelessEngine,
 }
 
 impl Registers {
@@ -59,7 +59,8 @@ impl Registers {
 
     /// Sets the registers content to the passed value.
     pub fn set(&mut self, reg: Register, val: u32) {
-        self.engine.add_change((reg, self.registers[reg as usize]));
+        self.engine
+            .add_change(reg as usize, self.registers[reg as usize]);
         self.registers[reg as usize] = val
     }
 
@@ -75,7 +76,7 @@ impl Registers {
     // Steps backwards and indicates if any changes were undone.
     pub fn step_backward(&mut self) -> bool {
         self.engine.step_backward().map_or(false, |changes| {
-            for (reg, val) in changes.rev() {
+            for Change(reg, val) in changes.rev() {
                 self.registers[reg as usize] = val
             }
             true
@@ -84,36 +85,28 @@ impl Registers {
 }
 
 pub struct Memory {
-    underlying: HashMap<u32, u32>,
-    engine: TimelessEngine<(u32, u32)>,
+    underlying: Vec<u32>,
+    engine: TimelessEngine,
 }
 
 impl Memory {
     pub fn new(instructions: &[u32]) -> Self {
-        let mut memory = HashMap::new();
-        for (count, instruction) in instructions.iter().enumerate() {
-            memory.insert(count as u32, *instruction);
-        }
         Memory {
-            underlying: memory,
+            underlying: instructions.to_vec(),
             engine: TimelessEngine::new(),
         }
     }
 
     /// Retrieves the value at the given address.
     pub fn get(&self, address: u32) -> u32 {
-        // Avoid the needless insertion, just keep returning zero until its set.
-        *self.underlying.get(&address).unwrap_or(&0)
+        self.underlying[address as usize]
     }
 
     /// Sets the value at the given address.
     pub fn set(&mut self, address: u32, val: u32) {
-        self.engine.add_change((address, val));
+        self.engine.add_change(address as usize, val);
 
-        self.underlying
-            .entry(address)
-            .and_modify(|v| *v = val)
-            .or_insert(val);
+        self.underlying[address as usize] = val;
     }
 
     pub fn step_forward(&mut self) {
@@ -123,11 +116,8 @@ impl Memory {
     // Steps backwards and indicates if any changes were undone.
     pub fn step_backward(&mut self) -> bool {
         self.engine.step_backward().map_or(false, |changes| {
-            for (address, val) in changes.rev() {
-                self.underlying
-                    .entry(address)
-                    .and_modify(|v| *v = val)
-                    .or_insert(val);
+            for Change(address, val) in changes.rev() {
+                self.underlying[address] = val;
             }
             true
         })
