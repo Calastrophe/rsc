@@ -1,44 +1,37 @@
-use crate::emulator::{util::Register, Assembler, Emulator};
+use crate::emulator::{util::Register, Emulator};
 use std::{
-    collections::HashMap,
+    collections::HashSet,
     thread::sleep,
     time::{Duration, Instant},
 };
 
-pub enum ExecutionState {
-    Start,
-    Halted,
-    Paused,
-    Running,
-    Stepping,
-    BreakpointHit,
-}
-
 pub struct Debugger {
     pub instructions_per_second: u32,
-    pub execution_state: ExecutionState,
-    breakpoints: HashMap<u32, bool>,
+    breakpoints: HashSet<u32>,
     emulator: Emulator,
 }
 
 impl Debugger {
     pub fn new(instructions: &[u32]) -> Self {
         Self {
-            execution_state: ExecutionState::Start,
             instructions_per_second: 5,
             emulator: Emulator::new(instructions),
-            breakpoints: HashMap::new(),
+            breakpoints: HashSet::new(),
         }
     }
 
-    fn set_execution_state(&mut self, state: ExecutionState) {
-        self.execution_state = state;
+    /// A helper function to easily read registers from the underlying emulator.
+    pub fn read_reg(&self, reg: Register) -> u32 {
+        self.emulator.registers.get(reg)
+    }
+
+    /// A helper function to easily read memory from the underlying emulator.
+    pub fn read_mem(&self, addr: u32) -> u32 {
+        self.emulator.memory.get(addr)
     }
 
     /// Runs the loaded program until a breakpoint is hit or halted.
     pub fn run(&mut self) {
-        self.set_execution_state(ExecutionState::Running);
-
         let time_per_instruction =
             Duration::from_secs_f32(1.0 / self.instructions_per_second as f32);
         let mut last_time = Instant::now();
@@ -61,8 +54,6 @@ impl Debugger {
 
     /// Steps over a breakpoint without disabling it.
     pub fn step_over(&mut self) {
-        self.set_execution_state(ExecutionState::Stepping);
-
         if !self.halted() {
             self.emulator.cycle();
         }
@@ -70,8 +61,6 @@ impl Debugger {
 
     /// Steps forward through execution path by 'steps' amount at a time.
     pub fn stepi(&mut self, steps: usize) {
-        self.set_execution_state(ExecutionState::Stepping);
-
         for _ in 0..steps {
             if !self.should_stop() {
                 self.emulator.cycle();
@@ -81,12 +70,8 @@ impl Debugger {
 
     /// Traces back execution path by 'steps' amount at a time.
     pub fn backi(&mut self, steps: usize) {
-        self.set_execution_state(ExecutionState::Stepping);
-
         for _ in 0..steps {
-            if !self.emulator.registers.step_backward() {
-                self.set_execution_state(ExecutionState::Start);
-            }
+            self.emulator.registers.step_backward();
             self.emulator.memory.step_backward();
         }
     }
@@ -95,7 +80,6 @@ impl Debugger {
     pub fn restart(&mut self) {
         loop {
             if !self.emulator.registers.step_backward() {
-                self.set_execution_state(ExecutionState::Start);
                 return;
             }
             self.emulator.memory.step_backward();
@@ -104,58 +88,22 @@ impl Debugger {
 
     /// Sets an enabled breakpoint at the provided address.
     pub fn set_breakpoint(&mut self, address: u32) {
-        self.breakpoints.insert(address, true);
+        self.breakpoints.insert(address);
     }
 
     /// Removes a breakpoint at a given address, returns if the removal acted on anything.
     pub fn remove_breakpoint(&mut self, address: u32) -> bool {
-        self.breakpoints.remove(&address).is_some()
+        self.breakpoints.remove(&address)
     }
 
     /// Indicates whether the underlying emulator is halted.
     pub fn halted(&mut self) -> bool {
-        if self.emulator.halted() {
-            self.set_execution_state(ExecutionState::Halted);
-            true
-        } else {
-            false
-        }
+        self.emulator.halted()
     }
 
     /// Returns if a given address is a breakpoint and is enabled.
     pub fn query(&mut self, address: u32) -> bool {
-        if self.breakpoints.get(&address).is_some_and(|v| *v) {
-            self.set_execution_state(ExecutionState::BreakpointHit);
-            true
-        } else {
-            false
-        }
-    }
-
-    /// Enables a given breakpoint, returns false if the breakpoint does not exist.
-    pub fn enable(&mut self, address: u32) -> bool {
-        self.breakpoints.get_mut(&address).is_some_and(|v| {
-            *v = true;
-            true
-        })
-    }
-
-    /// Disables a given breakpoint, returns false if the breakpoint does not exist.
-    pub fn disable(&mut self, address: u32) -> bool {
-        self.breakpoints.get_mut(&address).is_some_and(|v| {
-            *v = false;
-            true
-        })
-    }
-
-    /// A helper function to easily read registers from the underlying emulator.
-    pub fn read_reg(&self, reg: Register) -> u32 {
-        self.emulator.registers.get(reg)
-    }
-
-    /// A helper function to easily read memory from the underlying emulator.
-    pub fn read_mem(&self, addr: u32) -> u32 {
-        self.emulator.memory.get(addr)
+        self.breakpoints.get(&address).is_some()
     }
 
     /// Determines if the debugger should yield execution.

@@ -1,9 +1,4 @@
-use egui::Ui;
-
-use crate::{
-    debugger::{Debugger, ExecutionState},
-    emulator::Assembler,
-};
+use crate::{debugger::Debugger, emulator::Assembler};
 
 const FONT_SIZE: f32 = 17.0;
 
@@ -45,15 +40,7 @@ impl Top {
                     step_backward_enabled,
                     step_over_enabled,
                     restart_enabled,
-                ) = match debugger.execution_state {
-                    ExecutionState::Start => (false, true, true, false, false, false),
-                    ExecutionState::Halted => (false, false, false, true, false, true),
-                    ExecutionState::Paused | ExecutionState::Stepping => {
-                        (false, true, true, true, false, true)
-                    }
-                    ExecutionState::Running => (true, false, false, false, false, false),
-                    ExecutionState::BreakpointHit => (false, false, false, true, true, true),
-                };
+                ) = (false, false, false, false, false, false);
 
                 ui.add_enabled_ui(pause_enabled, |ui| {
                     if ui
