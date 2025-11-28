@@ -122,20 +122,24 @@ impl Emulator {
     fn sub(&mut self) {
         self.registers.set(
             R::ACC,
-            u32::wrapping_sub(self.registers.get(R::ACC), self.registers.get(R::R)),
+            self.registers
+                .get(R::ACC)
+                .wrapping_sub(self.registers.get(R::R)),
         )
     }
 
     fn add(&mut self) {
         self.registers.set(
             R::ACC,
-            u32::wrapping_add(self.registers.get(R::ACC), self.registers.get(R::R)),
+            self.registers
+                .get(R::ACC)
+                .wrapping_add(self.registers.get(R::R)),
         )
     }
 
     fn inc(&mut self) {
         self.registers
-            .set(R::ACC, u32::wrapping_add(self.registers.get(R::ACC), 1))
+            .set(R::ACC, self.registers.get(R::ACC).wrapping_add(1))
     }
 
     fn clac(&mut self) {
@@ -166,7 +170,7 @@ impl Emulator {
 
     fn inc_pc(&mut self) {
         self.registers
-            .set(R::PC, u32::wrapping_add(self.registers.get(R::PC), 1))
+            .set(R::PC, self.registers.get(R::PC).wrapping_add(1))
     }
 
     /// Dereferences the current address stored in the given register and retrieves the contents of said address from memory.
