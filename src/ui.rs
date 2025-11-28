@@ -5,7 +5,6 @@ mod top;
 mod variable_viewer;
 
 use crate::{debugger::Debugger, emulator::Assembler};
-use egui::Ui;
 
 use bytecode_viewer::BytecodeViewer;
 use cpu::CpuState;

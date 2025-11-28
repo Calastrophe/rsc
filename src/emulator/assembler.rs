@@ -6,11 +6,11 @@ use std::collections::HashMap;
 /// The internal line map is used for our bytecode highlighter to match a given line number to a range of instructions.
 /// Additionally, the assembler will look ahead for other errors to report for the editor to display.
 pub struct Assembler {
-    instructions: Vec<u32>,
-    line_map: HashMap<usize, (usize, usize)>,
-    symbol_map: HashMap<String, u32>,
-    symbol_references: HashMap<u32, String>,
-    errors: Vec<Error>,
+    pub instructions: Vec<u32>,
+    pub line_map: HashMap<usize, (usize, usize)>,
+    pub symbol_map: HashMap<String, u32>,
+    pub symbol_references: HashMap<u32, String>,
+    pub errors: Option<Vec<Error>>,
 }
 
 impl Assembler {
@@ -49,7 +49,7 @@ impl Assembler {
                     // If it requires an operand, ensure one exists, add it to the map.
                     if instruction.has_operand() {
                         let Some(operand) = words.next() else {
-                            errors.push(Error::ExpectedOperand(word.to_owned(), ln));
+                            errors.push(Error::MissingOperand(word.to_owned(), ln));
                             continue;
                         };
 
@@ -73,6 +73,11 @@ impl Assembler {
 
                     let name = word.trim_end_matches(':');
 
+                    if symbol_map.contains_key(name) {
+                        errors.push(Error::Redefinition(name.to_owned(), ln));
+                        continue;
+                    }
+
                     match words.next() {
                         // No operand, its a label.
                         Some(";") | None => {
@@ -81,7 +86,7 @@ impl Assembler {
                         // It has a operand, it is a variable declaration.
                         Some(value) => {
                             let Ok(value) = u32::from_str_radix(value, 16) else {
-                                errors.push(Error::InvalidOperand(name.to_owned(), ln));
+                                errors.push(Error::InvalidInitializer(name.to_owned(), ln));
                                 continue;
                             };
 
@@ -94,8 +99,6 @@ impl Assembler {
                     }
                 }
             }
-
-            // TODO: If the next word isn't the start of a comment, generate a error/lint saying a new line would be needed.
         }
 
         // Replace the placeholders in our bytecode with the address of their variable from the symbol table.
@@ -109,12 +112,14 @@ impl Assembler {
                         Some((idx, var_name))
                     }
                     None => {
-                        errors.push(Error::UnknownVariable(var_name.to_string(), ln));
+                        errors.push(Error::UndefinedVariable(var_name.to_string(), ln));
                         None
                     }
                 }
             })
             .collect();
+
+        let errors = (!errors.is_empty()).then(|| errors);
 
         Assembler {
             instructions,
@@ -123,21 +128,5 @@ impl Assembler {
             symbol_references,
             errors,
         }
-    }
-
-    pub fn instructions(&self) -> &[u32] {
-        &self.instructions
-    }
-
-    pub fn symbol_map(&self) -> &HashMap<String, u32> {
-        &self.symbol_map
-    }
-
-    pub fn symbol_references(&self) -> &HashMap<u32, String> {
-        &self.symbol_references
-    }
-
-    pub fn errors(&self) -> &Vec<Error> {
-        &self.errors
     }
 }

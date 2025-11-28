@@ -26,8 +26,8 @@ impl Top {
             {
                 let new_assembler = Assembler::parse(code.to_string());
                 // TODO: Spawn the debugger on another thread.
-                if new_assembler.errors().is_empty() {
-                    debugger.replace(Debugger::new(new_assembler.instructions()));
+                if new_assembler.errors.is_none() {
+                    debugger.replace(Debugger::new(&new_assembler.instructions));
                 }
                 assembler.replace(new_assembler);
             };

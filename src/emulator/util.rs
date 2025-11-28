@@ -2,14 +2,16 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("Unknown keyword '{0}' used on line {1}")]
+    #[error("An unknown keyword '{0}' was used on line {1}")]
     UnknownKeyword(String, usize),
-    #[error("Expected an operand after '{0}' on line {1}")]
-    ExpectedOperand(String, usize),
-    #[error("Invalid operand defined for variable '{0}' on line {1}")]
-    InvalidOperand(String, usize),
-    #[error("Unknown variable '{0}' used as operand on line {1}")]
-    UnknownVariable(String, usize),
+    #[error("An operand was expected after '{0}' on line {1}")]
+    MissingOperand(String, usize),
+    #[error("An invalid initializer was used on '{0}' on line {1}")]
+    InvalidInitializer(String, usize),
+    #[error("An undefined variable '{0}' was used on line {1}")]
+    UndefinedVariable(String, usize),
+    #[error("An attempt to redefine '{0}' occurred on line {1}")]
+    Redefinition(String, usize),
 }
 
 /// All registers in the RSC architecture.
