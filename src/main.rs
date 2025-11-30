@@ -1,7 +1,6 @@
 mod debugger;
 mod emulator;
 mod ui;
-use crate::ui::Interface;
 
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
@@ -14,6 +13,7 @@ fn main() -> eframe::Result<()> {
             .with_min_inner_size([1280.0, 720.0]),
         ..Default::default()
     };
+
     eframe::run_native(
         "interface",
         native_options,

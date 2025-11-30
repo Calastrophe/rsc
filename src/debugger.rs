@@ -1,14 +1,14 @@
 use crate::emulator::{util::Register, Emulator};
-use std::{
-    collections::HashSet,
-    thread::sleep,
-    time::{Duration, Instant},
-};
+use std::collections::HashSet;
+
+pub mod event;
+pub mod message;
+pub mod state;
 
 pub struct Debugger {
     pub instructions_per_second: u32,
     breakpoints: HashSet<u32>,
-    emulator: Emulator,
+    pub emulator: Emulator,
 }
 
 impl Debugger {
@@ -17,38 +17,6 @@ impl Debugger {
             instructions_per_second: 5,
             emulator: Emulator::new(instructions),
             breakpoints: HashSet::new(),
-        }
-    }
-
-    /// A helper function to easily read registers from the underlying emulator.
-    pub fn read_reg(&self, reg: Register) -> u32 {
-        self.emulator.registers.get(reg)
-    }
-
-    /// A helper function to easily read memory from the underlying emulator.
-    pub fn read_mem(&self, addr: u32) -> u32 {
-        self.emulator.memory.get(addr)
-    }
-
-    /// Runs the loaded program until a breakpoint is hit or halted.
-    pub fn run(&mut self) {
-        let time_per_instruction =
-            Duration::from_secs_f32(1.0 / self.instructions_per_second as f32);
-        let mut last_time = Instant::now();
-        let mut accumulated_time = Duration::ZERO;
-
-        while !self.should_stop() {
-            let now = Instant::now();
-            let elapsed = now.duration_since(last_time);
-            accumulated_time += elapsed;
-            last_time = now;
-
-            while accumulated_time >= time_per_instruction {
-                self.emulator.cycle();
-                accumulated_time -= time_per_instruction;
-            }
-
-            sleep(Duration::from_micros(500));
         }
     }
 

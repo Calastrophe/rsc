@@ -107,11 +107,6 @@ impl Top {
                         .clicked()
                     {};
                 });
-
-                ui.add(
-                    egui::Slider::new::<u32>(&mut debugger.instructions_per_second, 1..=20)
-                        .text("IPS"),
-                );
             }
         });
         ui.add_space(1.0);

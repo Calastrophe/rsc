@@ -15,7 +15,7 @@ impl CpuState {
                 register.as_str(),
                 debugger
                     .as_ref()
-                    .and_then(|debugger| { Some(debugger.read_reg(*register)) })
+                    .and_then(|debugger| { Some(debugger.emulator.registers.get(*register)) })
                     .unwrap_or(0)
             ));
         }
